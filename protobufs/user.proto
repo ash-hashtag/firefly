@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package lupyd.user;
+
+import "post.proto";
+
+message BoolValue {
+  bool val = 1;
+}
+
+message FullUser {
+  string uname = 1;
+  bytes bio = 2;
+  bool pfp = 3;
+  string uid = 4;
+  float credits = 5;
+  bool chats = 6;
+}
+
+message FullUserWithProfile {
+  FullUser user = 1;
+  lupyd.post.File pfp = 2;
+}
+
+message FullUsers {
+  repeated FullUser users = 1;
+}
+
+message Users {
+  repeated User users = 1;
+}
+message UpdateUserInfo {
+  lupyd.post.PostBody bio = 1;
+  BoolValue pfp = 2;
+  BoolValue chats = 3;
+}
+
+message User {
+  string uname = 1;
+  bytes bio = 2;
+  bool pfp = 3;
+  bool chats = 4;
+}

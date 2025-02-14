@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package lupyd.ads;
+
+
+message Ad {
+  int64 id = 1;
+  string by = 2;
+  string title = 3;
+  bytes body = 4;
+}
+
+message AdResponse {
+  repeated Ad ads = 1;
+}
+
+message AdRequest {
+  repeated string tags = 1;
+  string metadata = 2;
+}
+
+
+/*
+expiry type
+1 = view count
+2 = click count
+3 = view count pay as you go
+4 = click count pay as you go
+*/
+
+message CreateAdRequest {
+  string title = 1;
+  bytes body = 2;
+  uint64 expiry_ts = 4;
+  uint64 max_views = 5;
+  uint64 max_clicks = 6;
+}

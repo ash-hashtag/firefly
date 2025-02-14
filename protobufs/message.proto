@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package lupyd.chat;
+
+option go_package = "./utils";
+
+
+message FDBTextMessage {
+  string msg = 1;
+}
+
+message MarkdownMessage {
+  bytes msg = 1;
+}
+
+message VersionedMessage {
+  uint32 version = 1;
+  uint64 ts = 2;
+  bytes data = 3;
+}
+
+
+message GroupMessage {
+  oneof message {
+    AddUser addUser = 1;
+    RemoveUser removeUser = 2;
+    GroupChannelMessage groupMessage = 3;
+  }
+}
+
+message AddUser {
+  string username = 1;
+  string toChannel = 2;
+}
+
+message RemoveUser {
+  string username = 1;
+  string fromChannel = 2;
+}
+
+message GroupChannelMessage {
+  bytes id = 1;
+  int32 inChannel = 2;
+  string content = 3;
+  string by = 4;
+}
+
+message GroupChannelMessages {
+  repeated GroupChannelMessage messages = 1;
+}

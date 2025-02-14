@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package lupyd.auth;
+
+
+message UserTokens {
+    string access_token = 1;
+    string refresh_token = 2;
+}
+
+message TokenRequest {
+    string app_id = 1;
+    uint32 permissions = 2;
+    string refresh_token = 3;
+}
+
+message NewAppRequest {
+    string app_id = 1;
+    string contact_email = 2;
+    optional string app_link = 3;
+    optional uint32 permisisons = 4;
+}
+
+message NewLoginThirdPartyRequest {
+    string app = 1;
+    string tp_app_id = 2;
+}
+
+message ThirdPartyLoginResponse {
+    UserTokens lupyd_tokens = 1;
+    UserTokens app_tokens = 2;
+}
+
+message LoggedInApp {
+    string app = 1;
+    string aud = 2;
+    uint64 logged_in_since = 3;
+    uint64 last_token_refresh = 4;
+}
+
+message LoggedInApps {
+    repeated LoggedInApp apps = 1;
+}
+
+message LogoutToken {
+    string token = 1;
+}
+
+message LogoutTokens {
+    repeated LogoutToken tokens = 1;
+}

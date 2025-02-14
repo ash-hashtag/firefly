@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package lupyd.chat;
+
+message ChatSession {
+  uint64 ts = 1;
+  uint32 version = 2;
+  string user1 = 3;
+  string user2 = 4;
+}
+
+
+message ChatSessions {
+  repeated ChatSession sessions = 1;
+}
+
+
+message ChatKeys {
+  repeated bytes keys = 1;
+}
+
+message ChatKey {
+  bytes key = 1;
+}

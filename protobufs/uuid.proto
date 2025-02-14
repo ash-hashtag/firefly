@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package lupyd.uuid;
+
+message Uuid {
+  fixed64 high64 = 1;
+  fixed64 low64 = 2;
+}
