@@ -25,7 +25,12 @@ message GroupMessage {
     AddUser addUser = 1;
     RemoveUser removeUser = 2;
     GroupChannelMessage groupMessage = 3;
+    AuthenticationToken authToken = 4;
   }
+}
+
+message AuthenticationToken {
+  string token = 1;
 }
 
 message AddUser {

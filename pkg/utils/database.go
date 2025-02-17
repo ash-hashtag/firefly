@@ -134,6 +134,18 @@ func GetMessages(db *sql.DB, channel_id int, start_at uint64, end_at uint64) ([]
 	return messages, nil
 }
 
+func AddChannelMessage(db *sql.DB, msg *GroupChannelMessage) (*GroupChannelMessage, error) {
+	stmt := fmt.Sprintf("INSERT INTO %s (id, by, msg) VALUES ($1, $2, $3)", ChannelMessagesTableName(int(msg.GetInChannel())))
+
+	id := NewUlid(ulid.Now())
+
+	_, err := db.Exec(stmt, id, msg.GetBy(), msg.GetInChannel())
+
+	msg.Id = id[:]
+
+	return msg, err
+}
+
 func ChannelMessagesTableName(channel_id int) string {
 	return fmt.Sprintf("channel_messages_%d", channel_id)
 }
@@ -245,6 +257,12 @@ const (
 	ChannelVoice
 	ChannelVideo
 )
+
+func CreateUsersLastOnlineTable(db *sql.DB) {
+	stmt := "CREATE TABLE IF NOT EXISTS users_info ( username VARCHAR NOT NULL PRIMARY KEY, lastOnline TIMESTAMP NOT NULL DEFAULT NOW())"
+	_, err := db.Exec(stmt)
+	Check(err)
+}
 
 func CreateUsersTable(db *sql.DB) {
 	stmt := "CREATE TABLE IF NOT EXISTS users ( username VARCHAR NOT NULL, role TINYINT NOT NULL, channel_id INT NOT NULL, UNIQUE(username, channel_id) )"
