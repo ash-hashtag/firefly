@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"runtime"
 	"strings"
 
 	. "firefly/pkg/utils"
@@ -33,7 +32,7 @@ func handleWebSocket(conn *websocket.Conn, server *GroupServer) {
 
 	defer func() {
 		if username != nil {
-			server.MemberOffline(*username)
+			server.MemberOffline(*username, userMessageSink)
 			log.Println("User disconnected", *username)
 		}
 		conn.Close()
@@ -42,7 +41,7 @@ func handleWebSocket(conn *websocket.Conn, server *GroupServer) {
 
 	go func() {
 		for msg := range userMessageSink {
-			if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+			if err := conn.WriteMessage(websocket.BinaryMessage, msg); err != nil {
 				log.Println("Failed to write message to socket")
 				break
 			}
@@ -95,7 +94,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 
-	runtime.GOMAXPROCS(1)
+	// runtime.GOMAXPROCS(1)
 
 	server := NewGroupServer()
 

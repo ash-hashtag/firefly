@@ -1,93 +1,162 @@
 package utils
 
 import (
+	"context"
 	"crypto/rand"
 	"database/sql"
-	"errors"
-	"fmt"
-	"log"
-	"math/big"
+	"firefly/pkg/protos"
 
-	_ "github.com/marcboeker/go-duckdb"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/oklog/ulid"
 )
 
-func Check(err error) {
+func OpenDatabase(connString string) (*pgxpool.Pool, error) {
+
+	ctx := context.TODO()
+
+	pool, err := pgxpool.New(ctx, connString)
 	if err != nil {
-		panic(err.Error())
-	}
-}
-
-func CreateChannelMessagesTable(db *sql.DB, channel_id int) {
-
-	table_name := ChannelMessagesTableName(channel_id)
-
-	stmt := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id UHUGEINT PRIMARY KEY, by VARCHAR NOT NULL, msg VARCHAR NOT NULL)", table_name)
-	_, err := db.Exec(stmt)
-	Check(err)
-
-	log.Printf("Created Channel Messages Table %s", table_name)
-}
-
-func CreateChannelsTable(db *sql.DB) {
-	_, err := db.Exec("CREATE TABLE IF NOT EXISTS channels (id INT NOT NULL, name VARCHAR NOT NULL PRIMARY KEY, ty TINYINT NOT NULL)")
-	Check(err)
-}
-
-func OpenDatabase(filepath string, creator string) *sql.DB {
-	db, err := sql.Open("duckdb", filepath)
-	Check(err)
-
-	CreateUsersTable(db)
-	CreateHigherPriviligedUsersTable(db)
-	CreateChannelsTable(db)
-
-	AddHigherPriviledUser(db, "server", RoleServer)
-	AddHigherPriviledUser(db, creator, RoleOwner)
-
-	rows, err := db.Query("SELECT id, name, ty FROM channels")
-	Check(err)
-	for rows.Next() {
-		var channel_id int
-		var channel_name string
-		var channel_ty int
-		Check(rows.Scan(&channel_id, &channel_name, &channel_ty))
-		CreateChannel(db, channel_name, channel_ty)
+		return nil, err
 	}
 
-	return db
-}
+	db, err := pool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Release()
 
-func CreateHigherPriviligedUsersTable(db *sql.DB) {
-	_, err := db.Exec("CREATE TABLE IF NOT EXISTS priviliged_users (username VARCHAR PRIMARY KEY, role TINYINT NOT NULL)")
-	Check(err)
-
-	_, err = db.Exec("CREATE INDEX IF NOT EXISTS priviliged_username_idx ON priviliged_users ( username )")
-	Check(err)
-
-}
-
-func AddHigherPriviledUser(db *sql.DB, username string, role int) {
-	_, err := db.Exec("INSERT OR REPLACE INTO priviliged_users VALUES ($1, $2)", username, role)
-	Check(err)
-}
-
-func RemoveHigherPriviligedUser(db *sql.DB, username string) {
-	_, err := db.Exec("DELETE FROM priviliged_users WHERE username = $1", username)
-	Check(err)
-}
-
-func AddMessage(db *sql.DB, by, msg string, channel_id int) (ulid.ULID, error) {
-
-	if GetUserRole(db, by, channel_id) == -1 {
-		return ulid.ULID{}, errors.New("User can't access this channel")
+	tx, err := db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, err
 	}
 
-	msg_id := NewUlid(ulid.Now())
-	msg_id_as_big_int := new(big.Int).SetBytes(msg_id[:])
-	stmt := fmt.Sprintf("INSERT INTO channel_messages_%d VALUES ($1, $2, $3)", channel_id)
-	_, err := db.Exec(stmt, msg_id_as_big_int, by, msg)
-	return msg_id, err
+	_, err = tx.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS pgcrypto`)
+	if err != nil {
+		return nil, err
+	}
+	_, err = tx.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`)
+
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Exec(ctx, `
+CREATE OR REPLACE FUNCTION extract_ulid_timestamp(uuid_input UUID) RETURNS BIGINT AS $$
+DECLARE
+    uuid_hex TEXT;
+    ulid_timestamp BIGINT;
+BEGIN
+    -- Convert UUID to hex text without dashes
+    uuid_hex := replace(uuid_input::TEXT, '-', '');
+    
+    -- Extract the first 12 characters (6 bytes in hex) and convert to bigint
+    ulid_timestamp := ('x' || substring(uuid_hex from 1 for 12))::BIT(48)::BIGINT;
+
+    RETURN ulid_timestamp;
+END;
+$$ LANGUAGE plpgsql
+			
+		`)
+
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Exec(ctx, `
+CREATE OR REPLACE FUNCTION generate_ulid() RETURNS uuid
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  timestamp  BYTEA = E'\\000\\000\\000\\000\\000\\000';
+  unix_time  BIGINT;
+BEGIN
+    unix_time = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
+
+    timestamp = SET_BYTE(timestamp, 0, (unix_time >> 40)::BIT(8)::INTEGER);
+    timestamp = SET_BYTE(timestamp, 1, (unix_time >> 32)::BIT(8)::INTEGER);
+    timestamp = SET_BYTE(timestamp, 2, (unix_time >> 24)::BIT(8)::INTEGER);
+    timestamp = SET_BYTE(timestamp, 3, (unix_time >> 16)::BIT(8)::INTEGER);
+    timestamp = SET_BYTE(timestamp, 4, (unix_time >> 8)::BIT(8)::INTEGER);
+    timestamp = SET_BYTE(timestamp, 5, unix_time::BIT(8)::INTEGER);
+
+    RETURN encode( timestamp || gen_random_bytes(10) ,'hex')::uuid;
+END
+$$
+		`)
+
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Exec(ctx, `
+CREATE TABLE IF NOT EXISTS groupchats (
+    id SERIAL NOT NULL PRIMARY KEY,
+    created_by VARCHAR NOT NULL,
+    name VARCHAR NOT NULL,
+)
+		`)
+
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Exec(ctx, `CREATE TABLE IF NOT EXISTS groupchannels (
+    chanId INTEGER NOT NULL,
+    grpId INTEGER REFERENCES groupchats (id) NOT NULL,
+    chanType SMALLINT NOT NULL,
+)`)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Exec(ctx, `
+CREATE TABLE IF NOT EXISTS groupmembers (
+    grpId INTEGER REFERENCES groupchats (id) NOT NULL,
+    chanId INTEGER NOT NULL,
+    uname VARCHAR NOT NULL,
+    userrole INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (grpId, chanId, uname)
+)`)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Exec(ctx, `CREATE INDEX IF NOT EXISTS uname_idx_on_groupmembers ON groupmembers (uname)`)
+
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Exec(ctx, `
+CREATE TABLE IF NOT EXISTS groupchannels (
+    chanId INTEGER NOT NULL,
+    grpId INTEGER REFERENCES groupchats (id) NOT NULL,
+    chanType SMALLINT NOT NULL,
+)
+`)
+
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Exec(ctx, `
+CREATE INDEX IF NOT EXISTS grp_chan_index ON groupmessages (grpId, chanId);
+`)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return pool, nil
 }
 
 func NewUlid(timestamp uint64) ulid.ULID {
@@ -110,21 +179,28 @@ func MaxULIDAt(timestamp uint64) ulid.ULID {
 
 }
 
-func GetMessages(db *sql.DB, channel_id int, start_at uint64, end_at uint64) ([]*GroupChannelMessage, error) {
-	stmt := fmt.Sprintf("SELECT id, by, msg FROM %s WHERE id >= $1 AND id <= $2", ChannelMessagesTableName(channel_id))
-	rows, err := db.Query(stmt, MinULIDAt(start_at), MaxULIDAt(end_at))
+func GetMessages(db *pgxpool.Pool, group_id int, channel_id int, before uuid.UUID, count uint64) ([]*protos.GroupChannelMessage, error) {
+
+	const stmt = "SELECT id, by, msg FROM groupmessages WHERE grpId = $1 AND chanId = $2 AND id < $3 LIMIT $4"
+	rows, err := db.Query(context.TODO(), stmt, before, count)
 	if err != nil {
 		return nil, err
 	}
 
-	messages := make([]*GroupChannelMessage, 0, 512)
+	messages := make([]*protos.GroupChannelMessage, 0, 512)
+
+	defer rows.Close()
 
 	for rows.Next() {
-		var id *big.Int
+		var id uuid.UUID
 		var by, msg string
-		Check(rows.Scan(id, &by, &msg))
-		message := GroupChannelMessage{}
-		message.Id = id.Bytes()
+		err := rows.Scan(&id, &by, &msg)
+		if err != nil {
+			return nil, err
+		}
+		message := protos.GroupChannelMessage{}
+
+		message.Id = id[:]
 		message.InChannel = int32(channel_id)
 		message.Content = msg
 		message.By = by
@@ -134,123 +210,43 @@ func GetMessages(db *sql.DB, channel_id int, start_at uint64, end_at uint64) ([]
 	return messages, nil
 }
 
-func AddChannelMessage(db *sql.DB, msg *GroupChannelMessage) (*GroupChannelMessage, error) {
-	stmt := fmt.Sprintf("INSERT INTO %s (id, by, msg) VALUES ($1, $2, $3)", ChannelMessagesTableName(int(msg.GetInChannel())))
+func AddChannelMessage(db *pgxpool.Pool, groupId int, msg *protos.GroupChannelMessage) (*protos.GroupChannelMessage, error) {
+	stmt := "INSERT INTO groupmessages (id, grpId, chanId, msg, by) VALUES ($1, $2, $3, $4, $5)"
 
-	id := NewUlid(ulid.Now())
+	id := uuid.UUID([16]byte(NewUlid(ulid.Now())))
 
-	_, err := db.Exec(stmt, id, msg.GetBy(), msg.GetInChannel())
+	_, err := db.Exec(context.TODO(), stmt, id, groupId, msg.GetInChannel(), msg.GetContent(), msg.GetBy())
 
 	msg.Id = id[:]
 
 	return msg, err
 }
 
-func ChannelMessagesTableName(channel_id int) string {
-	return fmt.Sprintf("channel_messages_%d", channel_id)
-}
-
-func DeleteChannel(db *sql.DB, channel_id int) error {
-	result, err := db.Exec("DELETE FROM channels WHERE id = $1", channel_id)
-
-	if err != nil {
-		return err
-	}
-
-	rows_affected, err := result.RowsAffected()
-
-	Check(err)
-
-	if rows_affected == 0 {
-		return fmt.Errorf("No channel with id %d", channel_id)
-	}
-
-	stmt := fmt.Sprintf("DROP TABLE %s", ChannelMessagesTableName(channel_id))
-	_, err = db.Exec(stmt)
-	if err != nil {
-		return err
-	}
-	_, err = db.Exec("DELETE FROM users WHERE channel_id = $1", channel_id)
+func DeleteChannel(db *pgxpool.Pool, groupId int, channelId int) error {
+	_, err := db.Exec(context.TODO(), "DELETE FROM groupchannels WHERE grpId = $1 AND chanId = $2", groupId, channelId)
 
 	return err
-}
-
-func CreateChannel(db *sql.DB, channel_name string, channel_type int) (int, error) {
-
-	rand_id, err := rand.Int(rand.Reader, big.NewInt(int64(^uint16(0))))
-	Check(err)
-
-	var channel_id int
-
-	row := db.QueryRow("SELECT id FROM channels WHERE name = $1", channel_name)
-
-	if row.Scan(&channel_id) == nil {
-		return channel_id, nil
-	}
-
-	channel_id = int(rand_id.Int64())
-	_, err = db.Exec("INSERT INTO channels (id, name, ty) VALUES ( $1, $2, $3 )", channel_id, channel_name, channel_type)
-	Check(err)
-	log.Printf("Created Channel '%s' with id: %d", channel_name, channel_id)
-	CreateChannelMessagesTable(db, channel_id)
-	return channel_id, nil
-}
-
-func GetOwner(db *sql.DB) string {
-	row := db.QueryRow("SELECT username FROM priviliged_users WHERE role = $1", RoleOwner)
-
-	var owner_username string
-	Check(row.Scan(&owner_username))
-
-	return owner_username
 
 }
 
-type UserWithRole = struct {
-	username string
-	role     int
+func CreateChannel(db *pgxpool.Pool, groupId int, channelName string, channelType int, createdBy string) (int, error) {
+	row := db.QueryRow(context.TODO(), "SELECT create_group_channel($1, $2, $3, $4)", groupId, channelType, channelName, createdBy)
+
+	var channelId int
+	err := row.Scan(&channelId)
+	return channelId, err
+
 }
 
-type UserWithRoleInChannel = struct {
-	username   string
-	role       int
-	channel_id int
+func GetOwner(db *pgxpool.Pool, groupId int) (string, error) {
+	row := db.QueryRow(context.TODO(), "SELECT created_by FROM groupchats WHERE id = $1", groupId)
+
+	var creator string
+	err := row.Scan(&creator)
+
+	return creator, err
+
 }
-
-func GetPriviligedUsers(db *sql.DB) []UserWithRole {
-	users := make([]UserWithRole, 0, 32)
-	rows, err := db.Query("SELECT username, role FROM priviliged_users")
-	Check(err)
-	for rows.Next() {
-		var role int
-		var username string
-		rows.Scan(&username, &role)
-		users = append(users, UserWithRole{username: username, role: role})
-	}
-
-	return users
-}
-
-func GetAdminAllUsers(db *sql.DB) []string {
-	rows, err := db.Query("SELECT username FROM users WHERE role = $1", RoleAdminAll)
-	Check(err)
-
-	users := make([]string, 0, 64)
-	for rows.Next() {
-		var username string
-		rows.Scan(&username)
-		users = append(users, username)
-	}
-	return users
-}
-
-const (
-	RoleUser = iota
-	RoleAdmin
-	RoleAdminAll
-	RoleOwner
-	RoleServer
-)
 
 const (
 	ChannelText = iota
@@ -258,108 +254,106 @@ const (
 	ChannelVideo
 )
 
-func CreateUsersLastOnlineTable(db *sql.DB) {
-	stmt := "CREATE TABLE IF NOT EXISTS users_info ( username VARCHAR NOT NULL PRIMARY KEY, lastOnline TIMESTAMP NOT NULL DEFAULT NOW())"
-	_, err := db.Exec(stmt)
-	Check(err)
+func RemoveUserFromEverything(db *sql.DB, username string, groupId int) error {
+	stmt := "DELETE FROM groupmembers WHERE grpId = $1 AND uname = $2"
+	_, err := db.Exec(stmt, groupId, username)
+	return err
 }
 
-func CreateUsersTable(db *sql.DB) {
-	stmt := "CREATE TABLE IF NOT EXISTS users ( username VARCHAR NOT NULL, role TINYINT NOT NULL, channel_id INT NOT NULL, UNIQUE(username, channel_id) )"
-	_, err := db.Exec(stmt)
-	Check(err)
-	log.Printf("Created users Table")
-	_, err = db.Exec("CREATE INDEX IF NOT EXISTS username_idx ON users ( username )")
-	Check(err)
+func RemoveUserFromChannel(db *pgxpool.Pool, username string, groupId, channelId int, beingRemovedBy string) error {
+	const STMT = "SELECT kick_group_member($1, $2, $3, $4)"
+
+	_, err := db.Exec(context.TODO(), STMT, username, groupId, channelId, beingRemovedBy)
+
+	return err
 }
 
-func RemoveUserFromEverything(db *sql.DB, username string) {
-	stmt := "DELETE FROM users WHERE username = $1"
-	_, err := db.Exec(stmt, username)
-	Check(err)
-	RemoveHigherPriviligedUser(db, username)
-	log.Printf("Deleted User %s from every channel and group", username)
+// / if channel is -1, user will be added to all the channels `being_added_by` can add
+func AddUserToChannel(db *pgxpool.Pool, username string, groupId int, channelId int, role int, beingAddedBy string) error {
+
+	_, err := db.Exec(context.TODO(), "SELECT add_group_member ($1, $2, $3, $4, $5)", username, groupId, channelId, role, beingAddedBy)
+
+	return err
+
 }
 
-func RemoveUserFromChannel(db *sql.DB, username string, channel_id int) {
-	stmt := "DELETE FROM users WHERE username = $1 AND channel_id = $2"
-	_, err := db.Exec(stmt, username, channel_id)
-	Check(err)
-	log.Printf("Deleted User %s from channel %d", username, channel_id)
-}
+func GetUsersInChannel(db *pgxpool.Pool, groupId int, channelId int) ([]*protos.GroupMember, error) {
 
-func GetUserRole(db *sql.DB, username string, channel_id int) int {
-
-	row := db.QueryRow("SELECT role FROM priviliged_users WHERE username = $1 ", username)
-	var role int8
-	if row.Scan(&role) == nil {
-		return int(role)
-	}
-
-	row = db.QueryRow("SELECT role FROM users WHERE username = $1 AND channel_id = $2", username, channel_id)
-
-	if row.Scan(&role) == nil {
-		return int(role)
-	}
-
-	return -1
-}
-
-func AddUserToChannel(db *sql.DB, username string, user_role int, channel_id int, being_added_by string) error {
-	var being_added_by_role = GetUserRole(db, being_added_by, channel_id)
-	if user_role >= being_added_by_role {
-		return fmt.Errorf("User %s doesn't have permission to add user with role", being_added_by)
-	}
-
-	_, err := db.Exec("INSERT INTO users VALUES ($1, $2, $3) ON CONFLICT (username, channel_id) DO UPDATE SET role = $2", username, user_role, channel_id)
-
+	rows, err := db.Query(context.TODO(), "SELECT uname, role FROM groupmembers WHERE grpId = $1 AND chanId = $2", groupId, channelId)
+	users := make([]*protos.GroupMember, 0, 100)
 	if err != nil {
-		return err
+		return users, err
 	}
-
-	log.Printf("Added user %s with role %d to channel %d by %s", username, user_role, channel_id, being_added_by)
-	return nil
-}
-
-func GetUsersInChannel(db *sql.DB, channel_id int) []UserWithRole {
-	users := make([]UserWithRole, 0, 100)
-
-	rows, err := db.Query("SELECT username, role FROM users WHERE channel = $1", channel_id)
-	Check(err)
+	defer rows.Close()
 
 	for rows.Next() {
 		var username string
 		var role int
 		rows.Scan(&username, &role)
-		users = append(users, UserWithRole{username: username, role: role})
+		user := protos.GroupMember{}
+		user.Username = username
+		user.Role = int32(role)
+		user.ChanId = int32(channelId)
+		users = append(users, &user)
 	}
-
-	return users
-
+	return users, nil
 }
 
-func GetAllUsers(db *sql.DB) []UserWithRoleInChannel {
-	rows, err := db.Query("SELECT username, role, channel_id FROM users")
-	Check(err)
+func GetAllUsers(db *pgxpool.Pool, groupId int) ([]*protos.GroupMember, error) {
+	rows, err := db.Query(context.TODO(), "SELECT uname, userrole, chanId FROM groupmembers WHERE grpId = $1", groupId)
 
-	users := make([]UserWithRoleInChannel, 0, 512)
-	for rows.Next() {
-		var username string
-		var role int
-		var channel_id int
-		Check(rows.Scan(&username, &role, &channel_id))
-		users = append(users, UserWithRoleInChannel{username: username, role: role, channel_id: channel_id})
+	users := make([]*protos.GroupMember, 0, 512)
+	if err != nil {
+		return users, err
 	}
 
-	rows, err = db.Query("SELECT username, role FROM priviliged_users")
-	Check(err)
+	defer rows.Close()
 
 	for rows.Next() {
 		var username string
 		var role int
-		Check(rows.Scan(&username, &role))
-		users = append(users, UserWithRoleInChannel{username: username, role: role, channel_id: -1})
+		var chanId int
+		err := rows.Scan(&username, &role, &chanId)
+		if err != nil {
+			return users, err
+		}
+
+		user := protos.GroupMember{}
+		user.Username = username
+		user.Role = int32(role)
+		user.ChanId = int32(chanId)
+
+		users = append(users, &user)
 	}
 
-	return users
+	return users, nil
+}
+
+func GetAllChannels(db *pgxpool.Pool, grpId int) ([]*protos.GroupChannel, error) {
+	channels := make([]*protos.GroupChannel, 0, 20)
+	rows, err := db.Query(context.TODO(), "SELECT chanId, name, chanType FROM groupchannels WHERE grpId = $1", grpId)
+
+	if err != nil {
+		return channels, err
+	}
+
+	for rows.Next() {
+		var chanId int
+		var name string
+		var chanType int
+
+		err := rows.Scan(&chanId, &name, &chanType)
+		if err != nil {
+			return channels, err
+		}
+		channel := protos.GroupChannel{}
+
+		channel.ChannelType = int32(chanType)
+		channel.Name = name
+		channel.Id = int32(chanId)
+
+		channels = append(channels, &channel)
+	}
+
+	return channels, nil
 }

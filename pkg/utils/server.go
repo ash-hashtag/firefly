@@ -2,9 +2,11 @@ package utils
 
 import (
 	"encoding/json"
+	"firefly/pkg/protos"
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -27,14 +29,15 @@ func (channel *GroupChannel) AddMember(name string) {
 type GroupServer struct {
 	channels      map[string]*GroupChannel
 	members       map[string]time.Time
-	onlineMembers map[string]chan []byte
+	onlineMembers map[string][]chan []byte
+	mu            *sync.RWMutex
 }
 
 func NewGroupServer() GroupServer {
 	return GroupServer{
 		channels:      map[string]*GroupChannel{},
 		members:       map[string]time.Time{},
-		onlineMembers: map[string]chan []byte{},
+		onlineMembers: map[string][]chan []byte{},
 	}
 }
 
@@ -47,19 +50,19 @@ func (server *GroupServer) HandleMessage(msg Message) {
 			return
 		}
 
-		rawMsg := []byte(fmt.Sprintf("[%s] %s: %s", gMsg.ChannelName, msg.By, gMsg.Content))
+		rawMsg := fmt.Appendf(nil, "[%s] %s: %s", gMsg.ChannelName, msg.By, gMsg.Content)
 		server.SendToChannelMembers(rawMsg, gMsg.ChannelName, &msg.By)
 
 	case AddChannelMsgType:
 		channelName := msg.Payload
 		server.AddChannel(channelName)
-		rawMsg := []byte(fmt.Sprintf("server@all : Channel Created %s By %s", channelName, msg.By))
+		rawMsg := fmt.Appendf(nil, "server@all : Channel Created %s By %s", channelName, msg.By)
 		server.SendAll(rawMsg)
 
 	case AddMemberMsgType:
 		memberName := msg.Payload
 		server.AddMember(memberName)
-		rawMsg := []byte(fmt.Sprintf("server@all : %s Joined the server by %s", memberName, msg.By))
+		rawMsg := fmt.Appendf(nil, "server@all : %s Joined the server by %s", memberName, msg.By)
 		server.SendAll(rawMsg)
 
 	case AddMemberToChannelMsgType:
@@ -71,11 +74,12 @@ func (server *GroupServer) HandleMessage(msg Message) {
 		memberName := gMsg.Content
 		channelName := gMsg.ChannelName
 		server.AddMemberToChannel(memberName, gMsg.ChannelName)
-		rawMsg := []byte(fmt.Sprintf("server@all : %s Joined the Channel %s by %s", memberName, channelName, msg.By))
+		rawMsg := fmt.Appendf(nil, "server@all : %s Joined the Channel %s by %s", memberName, channelName, msg.By)
 		server.SendToChannelMembers(rawMsg, channelName, nil)
 
 	case InfoMsgType:
-		if msg.Payload == "channels" {
+		switch msg.Payload {
+		case "channels":
 			s := "Channels:\n"
 			for channelName := range server.channels {
 				s += channelName + "\n"
@@ -83,7 +87,7 @@ func (server *GroupServer) HandleMessage(msg Message) {
 			rawMsg := []byte(s[:len(s)-1])
 			server.SendTo(rawMsg, msg.By)
 
-		} else if msg.Payload == "members" {
+		case "members":
 			s := "Members:"
 			for member, lastSeen := range server.members {
 				s += "\n"
@@ -98,7 +102,7 @@ func (server *GroupServer) HandleMessage(msg Message) {
 			}
 			rawMsg := []byte(s)
 			server.SendTo(rawMsg, msg.By)
-		} else {
+		default:
 
 			if channelName, ok := strings.CutPrefix(msg.Payload, "channel "); ok {
 				if channel, ok := server.channels[channelName]; ok {
@@ -126,19 +130,23 @@ func (server *GroupServer) HandleMessage(msg Message) {
 	}
 }
 
-func (server *GroupServer) SendTo(rawMsg []byte, by string) {
-	if userChan, ok := server.onlineMembers[by]; ok {
-		go func() {
-			userChan <- rawMsg
-		}()
+func (server *GroupServer) SendTo(rawMsg []byte, to string) {
+	if userChan, ok := server.onlineMembers[to]; ok {
+		for _, c := range userChan {
+			go func() {
+				c <- rawMsg
+			}()
+		}
 	}
 }
 
 func (server *GroupServer) SendAll(rawMsg []byte) {
 	for _, userChan := range server.onlineMembers {
-		go func() {
-			userChan <- rawMsg
-		}()
+		for _, c := range userChan {
+			go func() {
+				c <- rawMsg
+			}()
+		}
 	}
 
 }
@@ -154,14 +162,7 @@ func (server *GroupServer) SendToChannelMembers(rawMsg []byte, channelName strin
 			if except != nil && *except == channelMember {
 				continue
 			}
-
 			server.SendTo(rawMsg, channelMember)
-
-			// if userChan, ok := server.onlineMembers[channelMember]; ok {
-			// 	go func() {
-			// 		userChan <- rawMsg
-			// 	}()
-			// }
 		}
 	} else {
 		for onlineUser, userChan := range server.onlineMembers {
@@ -171,9 +172,11 @@ func (server *GroupServer) SendToChannelMembers(rawMsg []byte, channelName strin
 
 			if _, ok := channel.ChannelMembers[onlineUser]; ok {
 
-				go func() {
-					userChan <- rawMsg
-				}()
+				for _, c := range userChan {
+					go func() {
+						c <- rawMsg
+					}()
+				}
 			}
 
 		}
@@ -185,15 +188,38 @@ func (server *GroupServer) MemberOnline(name string, userChan chan []byte) bool 
 	if _, ok := server.members[name]; !ok {
 		return false
 	}
-	server.onlineMembers[name] = userChan
+	server.onlineMembers[name] = append(server.onlineMembers[name], userChan)
 	server.members[name] = time.Now()
 	return true
 }
-func (server *GroupServer) MemberOffline(name string) bool {
+
+func (server *GroupServer) MemberOffline(name string, theirChan chan []byte) bool {
 	if _, ok := server.members[name]; !ok {
 		return false
 	}
-	delete(server.onlineMembers, name)
+
+	theirChannels, ok := server.onlineMembers[name]
+	if !ok {
+		return false
+	}
+
+	var i = -1
+	for j, c := range theirChannels {
+		if c == theirChan {
+			i = j
+			break
+		}
+	}
+
+	if i != -1 {
+		if len(theirChannels) == 0 {
+			delete(server.onlineMembers, name)
+		} else {
+			server.onlineMembers[name] = append(theirChannels[:i], theirChannels[i+1:]...)
+		}
+
+	}
+
 	server.members[name] = time.Now()
 	return true
 }
@@ -220,7 +246,22 @@ func (server *GroupServer) AddMemberToChannel(username, channelName string) bool
 
 	return true
 }
+
 func (server *GroupServer) AddChannel(name string) {
 	channel := NewGroupChannel(name)
 	server.channels[name] = &channel
 }
+
+// func (server *GroupServer) AddHttpMethods(mux *http.ServeMux) {
+// 	mux.HandleFunc("/members", func(w http.ResponseWriter, r *http.Request) {
+
+// 		server.mu.RLock()
+// 		defer server.mu.RUnlock()
+// 		var groupMembers = make([]protos.GroupMember, 0, len(server.members))
+
+// 		for username, lastOnline := range server.members {
+
+// 		}
+
+// 	})
+// }

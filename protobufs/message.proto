@@ -1,17 +1,8 @@
 syntax = "proto3";
 
-package lupyd.chat;
+package firefly;
 
-option go_package = "./utils";
-
-
-message FDBTextMessage {
-  string msg = 1;
-}
-
-message MarkdownMessage {
-  bytes msg = 1;
-}
+option go_package = "./protos";
 
 message VersionedMessage {
   uint32 version = 1;
@@ -20,28 +11,48 @@ message VersionedMessage {
 }
 
 
-message GroupMessage {
-  oneof message {
-    AddUser addUser = 1;
-    RemoveUser removeUser = 2;
-    GroupChannelMessage groupMessage = 3;
-    AuthenticationToken authToken = 4;
-  }
-}
-
 message AuthenticationToken {
   string token = 1;
 }
 
+
+message GroupChannel {
+  string name = 1;
+  int32 id = 2;
+  int32 channelType = 3;
+}
+
+
+message GetGroupMembers {
+  int32 channelId = 1;
+}
+
+message GetGroupMessages {
+  int32 channel_id = 1;
+  bytes before = 2;
+  int32 count = 3;
+}
+
 message AddUser {
   string username = 1;
-  string toChannel = 2;
+  int32 toChannel = 2;
+  int32 role = 3;
 }
 
 message RemoveUser {
   string username = 1;
-  string fromChannel = 2;
+  int32 fromChannel = 2;
 }
+
+
+message GroupMember {
+  string username = 1;
+  uint64 lastSeen = 2; 
+  bool isOnline = 3;
+  int32 role = 4;
+  int32 chanId = 5;
+}
+
 
 message GroupChannelMessage {
   bytes id = 1;
@@ -52,4 +63,51 @@ message GroupChannelMessage {
 
 message GroupChannelMessages {
   repeated GroupChannelMessage messages = 1;
+}
+
+message GroupMembers {
+  repeated GroupMember members = 1;
+}
+
+message GroupMessage {
+  int32 groupId = 1;
+  
+  oneof message {
+    AddUser addUser = 2;
+    RemoveUser removeUser = 3;
+    GroupChannelMessage groupMessage = 4;
+    GroupChannel addChannel = 5;
+    GroupChannel deleteChannel = 6;
+  }
+}
+
+message Request {
+  int32 id = 1;
+
+  oneof message {
+    GetGroupMembers getGroupMembers = 2;
+    GetGroupMessages getGroupMessages = 3;
+  }
+}
+
+message Response {
+  int32 id = 1;
+  oneof message {
+    GroupMembers members = 2;
+    GroupChannelMessages messages = 3;
+  }
+}
+
+message ClientMessage {
+  oneof payload {
+    Request request = 2;
+    GroupMessage groupMessage = 3;
+    AuthenticationToken authToken = 4;
+  }
+}
+message ServerMessage {
+  oneof message {
+    Response response = 1;
+    GroupMessage groupMessage = 2;
+  }
 }

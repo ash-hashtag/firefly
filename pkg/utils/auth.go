@@ -21,27 +21,27 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type GooglePublicKey struct {
+type PublicKey struct {
 	Kid string `json:"kid"`
 	E   string `json:"e"`
 	N   string `json:"n"`
 }
 
-type GooglePublicKeys struct {
-	Keys []GooglePublicKey `json:"keys"`
+type PublicKeys struct {
+	Keys []PublicKey `json:"keys"`
 }
 
 type VerifiedToken struct {
 	Username    string
-	Expires     time.Time
-	Permissions int
+	Expires     int64
+	Permissions int64
 }
 
 func Base64URLDecode(input string) ([]byte, error) {
 	return base64.URLEncoding.WithPadding(base64.NoPadding).DecodeString(input)
 }
 
-func JWKToRSAPublicKey(jwk GooglePublicKey) (*rsa.PublicKey, error) {
+func JWKToRSAPublicKey(jwk PublicKey) (*rsa.PublicKey, error) {
 	// Decode modulus (n)
 	nBytes, err := Base64URLDecode(jwk.N)
 	if err != nil {
@@ -65,8 +65,8 @@ func JWKToRSAPublicKey(jwk GooglePublicKey) (*rsa.PublicKey, error) {
 	return pubKey, nil
 }
 
-func (keys *GooglePublicKeysHandler) JwtKeyFunc() jwt.Keyfunc {
-	keyFunc := func(token *jwt.Token) (interface{}, error) {
+func (keys *PublicKeysHandler) JwtKeyFunc() jwt.Keyfunc {
+	keyFunc := func(token *jwt.Token) (any, error) {
 		kid := token.Header["kid"]
 
 		if reflect.TypeOf(kid).Kind() != reflect.String {
@@ -82,7 +82,7 @@ func (keys *GooglePublicKeysHandler) JwtKeyFunc() jwt.Keyfunc {
 	return keyFunc
 }
 
-func (keys *GooglePublicKeys) Verify(token string) (VerifiedToken, error) {
+func (keys *PublicKeys) Verify(token string) (VerifiedToken, error) {
 	verified_token := VerifiedToken{}
 	segments := strings.SplitN(token, ".", 3)
 
@@ -93,21 +93,22 @@ func (keys *GooglePublicKeys) Verify(token string) (VerifiedToken, error) {
 	return verified_token, nil
 }
 
-type GooglePublicKeysHandler struct {
-	Keys             []GoogleRsaPublicKey
+type PublicKeysHandler struct {
+	Keys             []RsaPublicKey
 	expiresAt        time.Time
+	lastModified     string
 	mu               *sync.RWMutex
 	expectedAudience string
 }
 
-type GoogleRsaPublicKey struct {
+type RsaPublicKey struct {
 	Kid string
 	key *rsa.PublicKey
 }
 
-func NewGooglePublicKeysHandler(expectedAudience string) GooglePublicKeysHandler {
-	keys := GooglePublicKeysHandler{
-		Keys:             make([]GoogleRsaPublicKey, 0, 4),
+func NewPublicKeysHandler(expectedAudience string) PublicKeysHandler {
+	keys := PublicKeysHandler{
+		Keys:             make([]RsaPublicKey, 0, 2),
 		expiresAt:        time.Now(),
 		mu:               &sync.RWMutex{},
 		expectedAudience: expectedAudience,
@@ -118,7 +119,9 @@ func NewGooglePublicKeysHandler(expectedAudience string) GooglePublicKeysHandler
 	return keys
 }
 
-const GOOGLE_PUBLIC_KEYS_URL = "https://www.googleapis.com/robot/v1/metadata/jwk/securetoken@system.gserviceaccount.com"
+// const GOOGLE_PUBLIC_KEYS_URL = "https://www.googleapis.com/robot/v1/metadata/jwk/securetoken@system.gserviceaccount.com"
+
+const PUBLIC_KEYS_URL = "https://auth.lupyd.com/.well-known/jwks.json"
 
 func ParseCacheControl(cacheControl string) int {
 
@@ -139,11 +142,12 @@ func ParseCacheControl(cacheControl string) int {
 }
 
 type TokenPayload struct {
-	Username    string `json:"uname"`
-	Permissions int64  `json:"perms"`
-	Expires     int64  `json:"exp"`
-	IssuedAt    int64  `json:"iss"`
-	Audience    string `json:"aud"`
+	Username    string   `json:"uname"`
+	Permissions int64    `json:"perms"`
+	Expires     int64    `json:"exp"`
+	IssuedAt    int64    `json:"iss"`
+	Audience    []string `json:"aud"`
+	UserId      string   `json:"sub"`
 }
 
 type JWTHeader struct {
@@ -151,7 +155,7 @@ type JWTHeader struct {
 	Alg string `json:"alg"`
 }
 
-func (self *GooglePublicKeysHandler) GetKeyWithKid(kid string) *rsa.PublicKey {
+func (self *PublicKeysHandler) GetKeyWithKid(kid string) *rsa.PublicKey {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 
@@ -165,9 +169,9 @@ func (self *GooglePublicKeysHandler) GetKeyWithKid(kid string) *rsa.PublicKey {
 
 }
 
-func (self *GooglePublicKeysHandler) VerifyToken(token string) *VerifiedToken {
+func (self *PublicKeysHandler) VerifyToken(token string) *VerifiedToken {
 
-	if self.expiresAt.UnixMilli() < time.Now().UnixMilli() {
+	if self.AreExpired() {
 		self.GetKeys()
 	}
 
@@ -221,19 +225,41 @@ func (self *GooglePublicKeysHandler) VerifyToken(token string) *VerifiedToken {
 		return nil
 	}
 
-	if tokenPayload.Audience != self.expectedAudience {
+	var hasExpectedAudience = false
+
+	for _, aud := range tokenPayload.Audience {
+		if aud == self.expectedAudience {
+			hasExpectedAudience = true
+			break
+		}
+	}
+
+	if !hasExpectedAudience {
 		log.Printf("Invalid Audience")
 		return nil
 	}
 
-	return nil
+	return &VerifiedToken{
+		Username:    tokenPayload.Username,
+		Expires:     tokenPayload.Expires,
+		Permissions: tokenPayload.Permissions,
+	}
 }
 
-func (self *GooglePublicKeysHandler) GetKeys() error {
+func (self *PublicKeysHandler) GetKeys() error {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
-	resp, err := http.Get(GOOGLE_PUBLIC_KEYS_URL)
+	req, err := http.NewRequest(http.MethodGet, PUBLIC_KEYS_URL, nil)
+	if err != nil {
+		return err
+	}
+	if len(self.lastModified) != 0 {
+		req.Header.Set("if-modified-since", self.lastModified)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+
 	if err != nil {
 		return err
 	}
@@ -256,7 +282,15 @@ func (self *GooglePublicKeysHandler) GetKeys() error {
 				self.expiresAt = date.Add(time.Duration(seconds) * time.Second)
 			}
 		}
+	}
 
+	lastModified := resp.Header.Get("last-modified")
+	if len(lastModified) != 0 {
+		self.lastModified = lastModified
+	}
+
+	if resp.StatusCode == http.StatusNotModified {
+		return nil
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -271,8 +305,12 @@ func (self *GooglePublicKeysHandler) GetKeys() error {
 	return nil
 }
 
-func (self *GooglePublicKeysHandler) FillFromJson(jsonString []byte) error {
-	newKeys := GooglePublicKeys{}
+func (self *PublicKeysHandler) AreExpired() bool {
+	return self.expiresAt.UnixMilli() < time.Now().UnixMilli()
+}
+
+func (self *PublicKeysHandler) FillFromJson(jsonString []byte) error {
+	newKeys := PublicKeys{}
 
 	if err := json.Unmarshal(jsonString, &newKeys); err != nil {
 		return err
@@ -286,7 +324,7 @@ func (self *GooglePublicKeysHandler) FillFromJson(jsonString []byte) error {
 			return err
 		}
 
-		self.Keys = append(self.Keys, GoogleRsaPublicKey{Kid: key.Kid, key: publicKey})
+		self.Keys = append(self.Keys, RsaPublicKey{Kid: key.Kid, key: publicKey})
 
 	}
 

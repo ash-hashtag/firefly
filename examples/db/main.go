@@ -7,7 +7,7 @@ import (
 
 func main() {
 
-	db := utils.OpenDatabase("database/example_test.duckdb", "ash")
+	db := utils.OpenDatabase("database/example_test.sqlite", "ash")
 	defer db.Close()
 
 	general_channel_id, err := utils.CreateChannel(db, "general", utils.ChannelText)
