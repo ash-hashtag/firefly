@@ -125,18 +125,63 @@ func (x *AuthenticationToken) GetToken() string {
 	return ""
 }
 
+type GroupChats struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Chats         []*GroupChat           `protobuf:"bytes,1,rep,name=chats,proto3" json:"chats,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GroupChats) Reset() {
+	*x = GroupChats{}
+	mi := &file_message_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GroupChats) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GroupChats) ProtoMessage() {}
+
+func (x *GroupChats) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GroupChats.ProtoReflect.Descriptor instead.
+func (*GroupChats) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GroupChats) GetChats() []*GroupChat {
+	if x != nil {
+		return x.Chats
+	}
+	return nil
+}
+
 type GroupChannel struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Id            int32                  `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
+	GroupId       int32                  `protobuf:"varint,1,opt,name=groupId,proto3" json:"groupId,omitempty"`
+	ChannelId     int32                  `protobuf:"varint,2,opt,name=channelId,proto3" json:"channelId,omitempty"`
 	ChannelType   int32                  `protobuf:"varint,3,opt,name=channelType,proto3" json:"channelType,omitempty"`
+	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GroupChannel) Reset() {
 	*x = GroupChannel{}
-	mi := &file_message_proto_msgTypes[2]
+	mi := &file_message_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -148,7 +193,7 @@ func (x *GroupChannel) String() string {
 func (*GroupChannel) ProtoMessage() {}
 
 func (x *GroupChannel) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[2]
+	mi := &file_message_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -161,19 +206,19 @@ func (x *GroupChannel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupChannel.ProtoReflect.Descriptor instead.
 func (*GroupChannel) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{2}
+	return file_message_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *GroupChannel) GetName() string {
+func (x *GroupChannel) GetGroupId() int32 {
 	if x != nil {
-		return x.Name
+		return x.GroupId
 	}
-	return ""
+	return 0
 }
 
-func (x *GroupChannel) GetId() int32 {
+func (x *GroupChannel) GetChannelId() int32 {
 	if x != nil {
-		return x.Id
+		return x.ChannelId
 	}
 	return 0
 }
@@ -185,16 +230,84 @@ func (x *GroupChannel) GetChannelType() int32 {
 	return 0
 }
 
+func (x *GroupChannel) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type GroupChat struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	GroupId       int32                  `protobuf:"varint,2,opt,name=groupId,proto3" json:"groupId,omitempty"`
+	Channels      []*GroupChannel        `protobuf:"bytes,3,rep,name=channels,proto3" json:"channels,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GroupChat) Reset() {
+	*x = GroupChat{}
+	mi := &file_message_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GroupChat) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GroupChat) ProtoMessage() {}
+
+func (x *GroupChat) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GroupChat.ProtoReflect.Descriptor instead.
+func (*GroupChat) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GroupChat) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GroupChat) GetGroupId() int32 {
+	if x != nil {
+		return x.GroupId
+	}
+	return 0
+}
+
+func (x *GroupChat) GetChannels() []*GroupChannel {
+	if x != nil {
+		return x.Channels
+	}
+	return nil
+}
+
 type GetGroupMembers struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ChannelId     int32                  `protobuf:"varint,1,opt,name=channelId,proto3" json:"channelId,omitempty"`
+	GroupId       int32                  `protobuf:"varint,1,opt,name=groupId,proto3" json:"groupId,omitempty"`
+	ChannelId     int32                  `protobuf:"varint,2,opt,name=channelId,proto3" json:"channelId,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetGroupMembers) Reset() {
 	*x = GetGroupMembers{}
-	mi := &file_message_proto_msgTypes[3]
+	mi := &file_message_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -206,7 +319,7 @@ func (x *GetGroupMembers) String() string {
 func (*GetGroupMembers) ProtoMessage() {}
 
 func (x *GetGroupMembers) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[3]
+	mi := &file_message_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -219,7 +332,14 @@ func (x *GetGroupMembers) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGroupMembers.ProtoReflect.Descriptor instead.
 func (*GetGroupMembers) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{3}
+	return file_message_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GetGroupMembers) GetGroupId() int32 {
+	if x != nil {
+		return x.GroupId
+	}
+	return 0
 }
 
 func (x *GetGroupMembers) GetChannelId() int32 {
@@ -231,16 +351,17 @@ func (x *GetGroupMembers) GetChannelId() int32 {
 
 type GetGroupMessages struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ChannelId     int32                  `protobuf:"varint,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
-	Before        []byte                 `protobuf:"bytes,2,opt,name=before,proto3" json:"before,omitempty"`
-	Count         int32                  `protobuf:"varint,3,opt,name=count,proto3" json:"count,omitempty"`
+	GroupId       int32                  `protobuf:"varint,1,opt,name=groupId,proto3" json:"groupId,omitempty"`
+	ChannelId     int32                  `protobuf:"varint,2,opt,name=channelId,proto3" json:"channelId,omitempty"`
+	Before        []byte                 `protobuf:"bytes,3,opt,name=before,proto3" json:"before,omitempty"`
+	Count         uint32                 `protobuf:"varint,4,opt,name=count,proto3" json:"count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetGroupMessages) Reset() {
 	*x = GetGroupMessages{}
-	mi := &file_message_proto_msgTypes[4]
+	mi := &file_message_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -252,7 +373,7 @@ func (x *GetGroupMessages) String() string {
 func (*GetGroupMessages) ProtoMessage() {}
 
 func (x *GetGroupMessages) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[4]
+	mi := &file_message_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -265,7 +386,14 @@ func (x *GetGroupMessages) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGroupMessages.ProtoReflect.Descriptor instead.
 func (*GetGroupMessages) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{4}
+	return file_message_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GetGroupMessages) GetGroupId() int32 {
+	if x != nil {
+		return x.GroupId
+	}
+	return 0
 }
 
 func (x *GetGroupMessages) GetChannelId() int32 {
@@ -282,7 +410,7 @@ func (x *GetGroupMessages) GetBefore() []byte {
 	return nil
 }
 
-func (x *GetGroupMessages) GetCount() int32 {
+func (x *GetGroupMessages) GetCount() uint32 {
 	if x != nil {
 		return x.Count
 	}
@@ -292,15 +420,16 @@ func (x *GetGroupMessages) GetCount() int32 {
 type AddUser struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
-	ToChannel     int32                  `protobuf:"varint,2,opt,name=toChannel,proto3" json:"toChannel,omitempty"`
-	Role          int32                  `protobuf:"varint,3,opt,name=role,proto3" json:"role,omitempty"`
+	GroupId       int32                  `protobuf:"varint,2,opt,name=groupId,proto3" json:"groupId,omitempty"`
+	ChannelId     int32                  `protobuf:"varint,3,opt,name=channelId,proto3" json:"channelId,omitempty"`
+	Role          int32                  `protobuf:"varint,4,opt,name=role,proto3" json:"role,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AddUser) Reset() {
 	*x = AddUser{}
-	mi := &file_message_proto_msgTypes[5]
+	mi := &file_message_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -312,7 +441,7 @@ func (x *AddUser) String() string {
 func (*AddUser) ProtoMessage() {}
 
 func (x *AddUser) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[5]
+	mi := &file_message_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -325,7 +454,7 @@ func (x *AddUser) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddUser.ProtoReflect.Descriptor instead.
 func (*AddUser) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{5}
+	return file_message_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *AddUser) GetUsername() string {
@@ -335,9 +464,16 @@ func (x *AddUser) GetUsername() string {
 	return ""
 }
 
-func (x *AddUser) GetToChannel() int32 {
+func (x *AddUser) GetGroupId() int32 {
 	if x != nil {
-		return x.ToChannel
+		return x.GroupId
+	}
+	return 0
+}
+
+func (x *AddUser) GetChannelId() int32 {
+	if x != nil {
+		return x.ChannelId
 	}
 	return 0
 }
@@ -352,14 +488,15 @@ func (x *AddUser) GetRole() int32 {
 type RemoveUser struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
-	FromChannel   int32                  `protobuf:"varint,2,opt,name=fromChannel,proto3" json:"fromChannel,omitempty"`
+	ChannelId     int32                  `protobuf:"varint,2,opt,name=channelId,proto3" json:"channelId,omitempty"`
+	GroupId       int32                  `protobuf:"varint,3,opt,name=groupId,proto3" json:"groupId,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RemoveUser) Reset() {
 	*x = RemoveUser{}
-	mi := &file_message_proto_msgTypes[6]
+	mi := &file_message_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -371,7 +508,7 @@ func (x *RemoveUser) String() string {
 func (*RemoveUser) ProtoMessage() {}
 
 func (x *RemoveUser) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[6]
+	mi := &file_message_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -384,7 +521,7 @@ func (x *RemoveUser) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveUser.ProtoReflect.Descriptor instead.
 func (*RemoveUser) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{6}
+	return file_message_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *RemoveUser) GetUsername() string {
@@ -394,9 +531,16 @@ func (x *RemoveUser) GetUsername() string {
 	return ""
 }
 
-func (x *RemoveUser) GetFromChannel() int32 {
+func (x *RemoveUser) GetChannelId() int32 {
 	if x != nil {
-		return x.FromChannel
+		return x.ChannelId
+	}
+	return 0
+}
+
+func (x *RemoveUser) GetGroupId() int32 {
+	if x != nil {
+		return x.GroupId
 	}
 	return 0
 }
@@ -414,7 +558,7 @@ type GroupMember struct {
 
 func (x *GroupMember) Reset() {
 	*x = GroupMember{}
-	mi := &file_message_proto_msgTypes[7]
+	mi := &file_message_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -426,7 +570,7 @@ func (x *GroupMember) String() string {
 func (*GroupMember) ProtoMessage() {}
 
 func (x *GroupMember) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[7]
+	mi := &file_message_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -439,7 +583,7 @@ func (x *GroupMember) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupMember.ProtoReflect.Descriptor instead.
 func (*GroupMember) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{7}
+	return file_message_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GroupMember) GetUsername() string {
@@ -480,16 +624,17 @@ func (x *GroupMember) GetChanId() int32 {
 type GroupChannelMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            []byte                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	InChannel     int32                  `protobuf:"varint,2,opt,name=inChannel,proto3" json:"inChannel,omitempty"`
-	Content       string                 `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
-	By            string                 `protobuf:"bytes,4,opt,name=by,proto3" json:"by,omitempty"`
+	GroupId       int32                  `protobuf:"varint,2,opt,name=groupId,proto3" json:"groupId,omitempty"`
+	ChannelId     int32                  `protobuf:"varint,3,opt,name=channelId,proto3" json:"channelId,omitempty"`
+	Content       string                 `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"`
+	By            string                 `protobuf:"bytes,5,opt,name=by,proto3" json:"by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GroupChannelMessage) Reset() {
 	*x = GroupChannelMessage{}
-	mi := &file_message_proto_msgTypes[8]
+	mi := &file_message_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -501,7 +646,7 @@ func (x *GroupChannelMessage) String() string {
 func (*GroupChannelMessage) ProtoMessage() {}
 
 func (x *GroupChannelMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[8]
+	mi := &file_message_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -514,7 +659,7 @@ func (x *GroupChannelMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupChannelMessage.ProtoReflect.Descriptor instead.
 func (*GroupChannelMessage) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{8}
+	return file_message_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GroupChannelMessage) GetId() []byte {
@@ -524,9 +669,16 @@ func (x *GroupChannelMessage) GetId() []byte {
 	return nil
 }
 
-func (x *GroupChannelMessage) GetInChannel() int32 {
+func (x *GroupChannelMessage) GetGroupId() int32 {
 	if x != nil {
-		return x.InChannel
+		return x.GroupId
+	}
+	return 0
+}
+
+func (x *GroupChannelMessage) GetChannelId() int32 {
+	if x != nil {
+		return x.ChannelId
 	}
 	return 0
 }
@@ -554,7 +706,7 @@ type GroupChannelMessages struct {
 
 func (x *GroupChannelMessages) Reset() {
 	*x = GroupChannelMessages{}
-	mi := &file_message_proto_msgTypes[9]
+	mi := &file_message_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -566,7 +718,7 @@ func (x *GroupChannelMessages) String() string {
 func (*GroupChannelMessages) ProtoMessage() {}
 
 func (x *GroupChannelMessages) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[9]
+	mi := &file_message_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -579,7 +731,7 @@ func (x *GroupChannelMessages) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupChannelMessages.ProtoReflect.Descriptor instead.
 func (*GroupChannelMessages) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{9}
+	return file_message_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GroupChannelMessages) GetMessages() []*GroupChannelMessage {
@@ -598,7 +750,7 @@ type GroupMembers struct {
 
 func (x *GroupMembers) Reset() {
 	*x = GroupMembers{}
-	mi := &file_message_proto_msgTypes[10]
+	mi := &file_message_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -610,7 +762,7 @@ func (x *GroupMembers) String() string {
 func (*GroupMembers) ProtoMessage() {}
 
 func (x *GroupMembers) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[10]
+	mi := &file_message_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -623,7 +775,7 @@ func (x *GroupMembers) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupMembers.ProtoReflect.Descriptor instead.
 func (*GroupMembers) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{10}
+	return file_message_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GroupMembers) GetMembers() []*GroupMember {
@@ -633,144 +785,6 @@ func (x *GroupMembers) GetMembers() []*GroupMember {
 	return nil
 }
 
-type GroupMessage struct {
-	state   protoimpl.MessageState `protogen:"open.v1"`
-	GroupId int32                  `protobuf:"varint,1,opt,name=groupId,proto3" json:"groupId,omitempty"`
-	// Types that are valid to be assigned to Message:
-	//
-	//	*GroupMessage_AddUser
-	//	*GroupMessage_RemoveUser
-	//	*GroupMessage_GroupMessage
-	//	*GroupMessage_AddChannel
-	//	*GroupMessage_DeleteChannel
-	Message       isGroupMessage_Message `protobuf_oneof:"message"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GroupMessage) Reset() {
-	*x = GroupMessage{}
-	mi := &file_message_proto_msgTypes[11]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GroupMessage) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GroupMessage) ProtoMessage() {}
-
-func (x *GroupMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[11]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GroupMessage.ProtoReflect.Descriptor instead.
-func (*GroupMessage) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{11}
-}
-
-func (x *GroupMessage) GetGroupId() int32 {
-	if x != nil {
-		return x.GroupId
-	}
-	return 0
-}
-
-func (x *GroupMessage) GetMessage() isGroupMessage_Message {
-	if x != nil {
-		return x.Message
-	}
-	return nil
-}
-
-func (x *GroupMessage) GetAddUser() *AddUser {
-	if x != nil {
-		if x, ok := x.Message.(*GroupMessage_AddUser); ok {
-			return x.AddUser
-		}
-	}
-	return nil
-}
-
-func (x *GroupMessage) GetRemoveUser() *RemoveUser {
-	if x != nil {
-		if x, ok := x.Message.(*GroupMessage_RemoveUser); ok {
-			return x.RemoveUser
-		}
-	}
-	return nil
-}
-
-func (x *GroupMessage) GetGroupMessage() *GroupChannelMessage {
-	if x != nil {
-		if x, ok := x.Message.(*GroupMessage_GroupMessage); ok {
-			return x.GroupMessage
-		}
-	}
-	return nil
-}
-
-func (x *GroupMessage) GetAddChannel() *GroupChannel {
-	if x != nil {
-		if x, ok := x.Message.(*GroupMessage_AddChannel); ok {
-			return x.AddChannel
-		}
-	}
-	return nil
-}
-
-func (x *GroupMessage) GetDeleteChannel() *GroupChannel {
-	if x != nil {
-		if x, ok := x.Message.(*GroupMessage_DeleteChannel); ok {
-			return x.DeleteChannel
-		}
-	}
-	return nil
-}
-
-type isGroupMessage_Message interface {
-	isGroupMessage_Message()
-}
-
-type GroupMessage_AddUser struct {
-	AddUser *AddUser `protobuf:"bytes,2,opt,name=addUser,proto3,oneof"`
-}
-
-type GroupMessage_RemoveUser struct {
-	RemoveUser *RemoveUser `protobuf:"bytes,3,opt,name=removeUser,proto3,oneof"`
-}
-
-type GroupMessage_GroupMessage struct {
-	GroupMessage *GroupChannelMessage `protobuf:"bytes,4,opt,name=groupMessage,proto3,oneof"`
-}
-
-type GroupMessage_AddChannel struct {
-	AddChannel *GroupChannel `protobuf:"bytes,5,opt,name=addChannel,proto3,oneof"`
-}
-
-type GroupMessage_DeleteChannel struct {
-	DeleteChannel *GroupChannel `protobuf:"bytes,6,opt,name=deleteChannel,proto3,oneof"`
-}
-
-func (*GroupMessage_AddUser) isGroupMessage_Message() {}
-
-func (*GroupMessage_RemoveUser) isGroupMessage_Message() {}
-
-func (*GroupMessage_GroupMessage) isGroupMessage_Message() {}
-
-func (*GroupMessage_AddChannel) isGroupMessage_Message() {}
-
-func (*GroupMessage_DeleteChannel) isGroupMessage_Message() {}
-
 type Request struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -778,6 +792,10 @@ type Request struct {
 	//
 	//	*Request_GetGroupMembers
 	//	*Request_GetGroupMessages
+	//	*Request_AddUser
+	//	*Request_RemoveUser
+	//	*Request_AddChannel
+	//	*Request_DeleteChannel
 	Message       isRequest_Message `protobuf_oneof:"message"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -785,7 +803,7 @@ type Request struct {
 
 func (x *Request) Reset() {
 	*x = Request{}
-	mi := &file_message_proto_msgTypes[12]
+	mi := &file_message_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -797,7 +815,7 @@ func (x *Request) String() string {
 func (*Request) ProtoMessage() {}
 
 func (x *Request) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[12]
+	mi := &file_message_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -810,7 +828,7 @@ func (x *Request) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Request.ProtoReflect.Descriptor instead.
 func (*Request) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{12}
+	return file_message_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *Request) GetId() int32 {
@@ -845,6 +863,42 @@ func (x *Request) GetGetGroupMessages() *GetGroupMessages {
 	return nil
 }
 
+func (x *Request) GetAddUser() *AddUser {
+	if x != nil {
+		if x, ok := x.Message.(*Request_AddUser); ok {
+			return x.AddUser
+		}
+	}
+	return nil
+}
+
+func (x *Request) GetRemoveUser() *RemoveUser {
+	if x != nil {
+		if x, ok := x.Message.(*Request_RemoveUser); ok {
+			return x.RemoveUser
+		}
+	}
+	return nil
+}
+
+func (x *Request) GetAddChannel() *GroupChannel {
+	if x != nil {
+		if x, ok := x.Message.(*Request_AddChannel); ok {
+			return x.AddChannel
+		}
+	}
+	return nil
+}
+
+func (x *Request) GetDeleteChannel() *GroupChannel {
+	if x != nil {
+		if x, ok := x.Message.(*Request_DeleteChannel); ok {
+			return x.DeleteChannel
+		}
+	}
+	return nil
+}
+
 type isRequest_Message interface {
 	isRequest_Message()
 }
@@ -857,9 +911,85 @@ type Request_GetGroupMessages struct {
 	GetGroupMessages *GetGroupMessages `protobuf:"bytes,3,opt,name=getGroupMessages,proto3,oneof"`
 }
 
+type Request_AddUser struct {
+	AddUser *AddUser `protobuf:"bytes,4,opt,name=addUser,proto3,oneof"`
+}
+
+type Request_RemoveUser struct {
+	RemoveUser *RemoveUser `protobuf:"bytes,5,opt,name=removeUser,proto3,oneof"`
+}
+
+type Request_AddChannel struct {
+	AddChannel *GroupChannel `protobuf:"bytes,6,opt,name=addChannel,proto3,oneof"`
+}
+
+type Request_DeleteChannel struct {
+	DeleteChannel *GroupChannel `protobuf:"bytes,7,opt,name=deleteChannel,proto3,oneof"`
+}
+
 func (*Request_GetGroupMembers) isRequest_Message() {}
 
 func (*Request_GetGroupMessages) isRequest_Message() {}
+
+func (*Request_AddUser) isRequest_Message() {}
+
+func (*Request_RemoveUser) isRequest_Message() {}
+
+func (*Request_AddChannel) isRequest_Message() {}
+
+func (*Request_DeleteChannel) isRequest_Message() {}
+
+type Error struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Status        int32                  `protobuf:"varint,1,opt,name=status,proto3" json:"status,omitempty"`
+	Error         string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Error) Reset() {
+	*x = Error{}
+	mi := &file_message_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Error) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Error) ProtoMessage() {}
+
+func (x *Error) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Error.ProtoReflect.Descriptor instead.
+func (*Error) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *Error) GetStatus() int32 {
+	if x != nil {
+		return x.Status
+	}
+	return 0
+}
+
+func (x *Error) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
 
 type Response struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -868,6 +998,7 @@ type Response struct {
 	//
 	//	*Response_Members
 	//	*Response_Messages
+	//	*Response_Error
 	Message       isResponse_Message `protobuf_oneof:"message"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -875,7 +1006,7 @@ type Response struct {
 
 func (x *Response) Reset() {
 	*x = Response{}
-	mi := &file_message_proto_msgTypes[13]
+	mi := &file_message_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -887,7 +1018,7 @@ func (x *Response) String() string {
 func (*Response) ProtoMessage() {}
 
 func (x *Response) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[13]
+	mi := &file_message_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -900,7 +1031,7 @@ func (x *Response) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Response.ProtoReflect.Descriptor instead.
 func (*Response) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{13}
+	return file_message_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *Response) GetId() int32 {
@@ -935,6 +1066,15 @@ func (x *Response) GetMessages() *GroupChannelMessages {
 	return nil
 }
 
+func (x *Response) GetError() *Error {
+	if x != nil {
+		if x, ok := x.Message.(*Response_Error); ok {
+			return x.Error
+		}
+	}
+	return nil
+}
+
 type isResponse_Message interface {
 	isResponse_Message()
 }
@@ -947,9 +1087,15 @@ type Response_Messages struct {
 	Messages *GroupChannelMessages `protobuf:"bytes,3,opt,name=messages,proto3,oneof"`
 }
 
+type Response_Error struct {
+	Error *Error `protobuf:"bytes,4,opt,name=error,proto3,oneof"`
+}
+
 func (*Response_Members) isResponse_Message() {}
 
 func (*Response_Messages) isResponse_Message() {}
+
+func (*Response_Error) isResponse_Message() {}
 
 type ClientMessage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -958,6 +1104,7 @@ type ClientMessage struct {
 	//	*ClientMessage_Request
 	//	*ClientMessage_GroupMessage
 	//	*ClientMessage_AuthToken
+	//	*ClientMessage_CurrentGroup
 	Payload       isClientMessage_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -965,7 +1112,7 @@ type ClientMessage struct {
 
 func (x *ClientMessage) Reset() {
 	*x = ClientMessage{}
-	mi := &file_message_proto_msgTypes[14]
+	mi := &file_message_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -977,7 +1124,7 @@ func (x *ClientMessage) String() string {
 func (*ClientMessage) ProtoMessage() {}
 
 func (x *ClientMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[14]
+	mi := &file_message_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -990,7 +1137,7 @@ func (x *ClientMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientMessage.ProtoReflect.Descriptor instead.
 func (*ClientMessage) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{14}
+	return file_message_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ClientMessage) GetPayload() isClientMessage_Payload {
@@ -1009,7 +1156,7 @@ func (x *ClientMessage) GetRequest() *Request {
 	return nil
 }
 
-func (x *ClientMessage) GetGroupMessage() *GroupMessage {
+func (x *ClientMessage) GetGroupMessage() *GroupChannelMessage {
 	if x != nil {
 		if x, ok := x.Payload.(*ClientMessage_GroupMessage); ok {
 			return x.GroupMessage
@@ -1027,6 +1174,15 @@ func (x *ClientMessage) GetAuthToken() *AuthenticationToken {
 	return nil
 }
 
+func (x *ClientMessage) GetCurrentGroup() int32 {
+	if x != nil {
+		if x, ok := x.Payload.(*ClientMessage_CurrentGroup); ok {
+			return x.CurrentGroup
+		}
+	}
+	return 0
+}
+
 type isClientMessage_Payload interface {
 	isClientMessage_Payload()
 }
@@ -1036,11 +1192,15 @@ type ClientMessage_Request struct {
 }
 
 type ClientMessage_GroupMessage struct {
-	GroupMessage *GroupMessage `protobuf:"bytes,3,opt,name=groupMessage,proto3,oneof"`
+	GroupMessage *GroupChannelMessage `protobuf:"bytes,3,opt,name=groupMessage,proto3,oneof"`
 }
 
 type ClientMessage_AuthToken struct {
 	AuthToken *AuthenticationToken `protobuf:"bytes,4,opt,name=authToken,proto3,oneof"`
+}
+
+type ClientMessage_CurrentGroup struct {
+	CurrentGroup int32 `protobuf:"varint,5,opt,name=currentGroup,proto3,oneof"`
 }
 
 func (*ClientMessage_Request) isClientMessage_Payload() {}
@@ -1049,11 +1209,15 @@ func (*ClientMessage_GroupMessage) isClientMessage_Payload() {}
 
 func (*ClientMessage_AuthToken) isClientMessage_Payload() {}
 
+func (*ClientMessage_CurrentGroup) isClientMessage_Payload() {}
+
 type ServerMessage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Message:
 	//
 	//	*ServerMessage_Response
+	//	*ServerMessage_GroupChats
+	//	*ServerMessage_GroupChat
 	//	*ServerMessage_GroupMessage
 	Message       isServerMessage_Message `protobuf_oneof:"message"`
 	unknownFields protoimpl.UnknownFields
@@ -1062,7 +1226,7 @@ type ServerMessage struct {
 
 func (x *ServerMessage) Reset() {
 	*x = ServerMessage{}
-	mi := &file_message_proto_msgTypes[15]
+	mi := &file_message_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1074,7 +1238,7 @@ func (x *ServerMessage) String() string {
 func (*ServerMessage) ProtoMessage() {}
 
 func (x *ServerMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[15]
+	mi := &file_message_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1087,7 +1251,7 @@ func (x *ServerMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerMessage.ProtoReflect.Descriptor instead.
 func (*ServerMessage) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{15}
+	return file_message_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ServerMessage) GetMessage() isServerMessage_Message {
@@ -1106,7 +1270,25 @@ func (x *ServerMessage) GetResponse() *Response {
 	return nil
 }
 
-func (x *ServerMessage) GetGroupMessage() *GroupMessage {
+func (x *ServerMessage) GetGroupChats() *GroupChats {
+	if x != nil {
+		if x, ok := x.Message.(*ServerMessage_GroupChats); ok {
+			return x.GroupChats
+		}
+	}
+	return nil
+}
+
+func (x *ServerMessage) GetGroupChat() *GroupChat {
+	if x != nil {
+		if x, ok := x.Message.(*ServerMessage_GroupChat); ok {
+			return x.GroupChat
+		}
+	}
+	return nil
+}
+
+func (x *ServerMessage) GetGroupMessage() *GroupChannelMessage {
 	if x != nil {
 		if x, ok := x.Message.(*ServerMessage_GroupMessage); ok {
 			return x.GroupMessage
@@ -1123,11 +1305,23 @@ type ServerMessage_Response struct {
 	Response *Response `protobuf:"bytes,1,opt,name=response,proto3,oneof"`
 }
 
+type ServerMessage_GroupChats struct {
+	GroupChats *GroupChats `protobuf:"bytes,2,opt,name=groupChats,proto3,oneof"`
+}
+
+type ServerMessage_GroupChat struct {
+	GroupChat *GroupChat `protobuf:"bytes,3,opt,name=groupChat,proto3,oneof"`
+}
+
 type ServerMessage_GroupMessage struct {
-	GroupMessage *GroupMessage `protobuf:"bytes,2,opt,name=groupMessage,proto3,oneof"`
+	GroupMessage *GroupChannelMessage `protobuf:"bytes,4,opt,name=groupMessage,proto3,oneof"`
 }
 
 func (*ServerMessage_Response) isServerMessage_Message() {}
+
+func (*ServerMessage_GroupChats) isServerMessage_Message() {}
+
+func (*ServerMessage_GroupChat) isServerMessage_Message() {}
 
 func (*ServerMessage_GroupMessage) isServerMessage_Message() {}
 
@@ -1141,71 +1335,88 @@ const file_message_proto_rawDesc = "" +
 	"\x02ts\x18\x02 \x01(\x04R\x02ts\x12\x12\n" +
 	"\x04data\x18\x03 \x01(\fR\x04data\"+\n" +
 	"\x13AuthenticationToken\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\"T\n" +
-	"\fGroupChannel\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\x05R\x02id\x12 \n" +
-	"\vchannelType\x18\x03 \x01(\x05R\vchannelType\"/\n" +
-	"\x0fGetGroupMembers\x12\x1c\n" +
-	"\tchannelId\x18\x01 \x01(\x05R\tchannelId\"_\n" +
-	"\x10GetGroupMessages\x12\x1d\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"6\n" +
 	"\n" +
-	"channel_id\x18\x01 \x01(\x05R\tchannelId\x12\x16\n" +
-	"\x06before\x18\x02 \x01(\fR\x06before\x12\x14\n" +
-	"\x05count\x18\x03 \x01(\x05R\x05count\"W\n" +
+	"GroupChats\x12(\n" +
+	"\x05chats\x18\x01 \x03(\v2\x12.firefly.GroupChatR\x05chats\"|\n" +
+	"\fGroupChannel\x12\x18\n" +
+	"\agroupId\x18\x01 \x01(\x05R\agroupId\x12\x1c\n" +
+	"\tchannelId\x18\x02 \x01(\x05R\tchannelId\x12 \n" +
+	"\vchannelType\x18\x03 \x01(\x05R\vchannelType\x12\x12\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\"l\n" +
+	"\tGroupChat\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
+	"\agroupId\x18\x02 \x01(\x05R\agroupId\x121\n" +
+	"\bchannels\x18\x03 \x03(\v2\x15.firefly.GroupChannelR\bchannels\"I\n" +
+	"\x0fGetGroupMembers\x12\x18\n" +
+	"\agroupId\x18\x01 \x01(\x05R\agroupId\x12\x1c\n" +
+	"\tchannelId\x18\x02 \x01(\x05R\tchannelId\"x\n" +
+	"\x10GetGroupMessages\x12\x18\n" +
+	"\agroupId\x18\x01 \x01(\x05R\agroupId\x12\x1c\n" +
+	"\tchannelId\x18\x02 \x01(\x05R\tchannelId\x12\x16\n" +
+	"\x06before\x18\x03 \x01(\fR\x06before\x12\x14\n" +
+	"\x05count\x18\x04 \x01(\rR\x05count\"q\n" +
 	"\aAddUser\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\x12\x1c\n" +
-	"\ttoChannel\x18\x02 \x01(\x05R\ttoChannel\x12\x12\n" +
-	"\x04role\x18\x03 \x01(\x05R\x04role\"J\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x18\n" +
+	"\agroupId\x18\x02 \x01(\x05R\agroupId\x12\x1c\n" +
+	"\tchannelId\x18\x03 \x01(\x05R\tchannelId\x12\x12\n" +
+	"\x04role\x18\x04 \x01(\x05R\x04role\"`\n" +
 	"\n" +
 	"RemoveUser\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\x12 \n" +
-	"\vfromChannel\x18\x02 \x01(\x05R\vfromChannel\"\x8d\x01\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x1c\n" +
+	"\tchannelId\x18\x02 \x01(\x05R\tchannelId\x12\x18\n" +
+	"\agroupId\x18\x03 \x01(\x05R\agroupId\"\x8d\x01\n" +
 	"\vGroupMember\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\blastSeen\x18\x02 \x01(\x04R\blastSeen\x12\x1a\n" +
 	"\bisOnline\x18\x03 \x01(\bR\bisOnline\x12\x12\n" +
 	"\x04role\x18\x04 \x01(\x05R\x04role\x12\x16\n" +
-	"\x06chanId\x18\x05 \x01(\x05R\x06chanId\"m\n" +
+	"\x06chanId\x18\x05 \x01(\x05R\x06chanId\"\x87\x01\n" +
 	"\x13GroupChannelMessage\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\fR\x02id\x12\x1c\n" +
-	"\tinChannel\x18\x02 \x01(\x05R\tinChannel\x12\x18\n" +
-	"\acontent\x18\x03 \x01(\tR\acontent\x12\x0e\n" +
-	"\x02by\x18\x04 \x01(\tR\x02by\"P\n" +
+	"\x02id\x18\x01 \x01(\fR\x02id\x12\x18\n" +
+	"\agroupId\x18\x02 \x01(\x05R\agroupId\x12\x1c\n" +
+	"\tchannelId\x18\x03 \x01(\x05R\tchannelId\x12\x18\n" +
+	"\acontent\x18\x04 \x01(\tR\acontent\x12\x0e\n" +
+	"\x02by\x18\x05 \x01(\tR\x02by\"P\n" +
 	"\x14GroupChannelMessages\x128\n" +
 	"\bmessages\x18\x01 \x03(\v2\x1c.firefly.GroupChannelMessageR\bmessages\">\n" +
 	"\fGroupMembers\x12.\n" +
-	"\amembers\x18\x01 \x03(\v2\x14.firefly.GroupMemberR\amembers\"\xd4\x02\n" +
-	"\fGroupMessage\x12\x18\n" +
-	"\agroupId\x18\x01 \x01(\x05R\agroupId\x12,\n" +
-	"\aaddUser\x18\x02 \x01(\v2\x10.firefly.AddUserH\x00R\aaddUser\x125\n" +
-	"\n" +
-	"removeUser\x18\x03 \x01(\v2\x13.firefly.RemoveUserH\x00R\n" +
-	"removeUser\x12B\n" +
-	"\fgroupMessage\x18\x04 \x01(\v2\x1c.firefly.GroupChannelMessageH\x00R\fgroupMessage\x127\n" +
-	"\n" +
-	"addChannel\x18\x05 \x01(\v2\x15.firefly.GroupChannelH\x00R\n" +
-	"addChannel\x12=\n" +
-	"\rdeleteChannel\x18\x06 \x01(\v2\x15.firefly.GroupChannelH\x00R\rdeleteChannelB\t\n" +
-	"\amessage\"\xb3\x01\n" +
+	"\amembers\x18\x01 \x03(\v2\x14.firefly.GroupMemberR\amembers\"\x90\x03\n" +
 	"\aRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x05R\x02id\x12D\n" +
 	"\x0fgetGroupMembers\x18\x02 \x01(\v2\x18.firefly.GetGroupMembersH\x00R\x0fgetGroupMembers\x12G\n" +
-	"\x10getGroupMessages\x18\x03 \x01(\v2\x19.firefly.GetGroupMessagesH\x00R\x10getGroupMessagesB\t\n" +
-	"\amessage\"\x95\x01\n" +
+	"\x10getGroupMessages\x18\x03 \x01(\v2\x19.firefly.GetGroupMessagesH\x00R\x10getGroupMessages\x12,\n" +
+	"\aaddUser\x18\x04 \x01(\v2\x10.firefly.AddUserH\x00R\aaddUser\x125\n" +
+	"\n" +
+	"removeUser\x18\x05 \x01(\v2\x13.firefly.RemoveUserH\x00R\n" +
+	"removeUser\x127\n" +
+	"\n" +
+	"addChannel\x18\x06 \x01(\v2\x15.firefly.GroupChannelH\x00R\n" +
+	"addChannel\x12=\n" +
+	"\rdeleteChannel\x18\a \x01(\v2\x15.firefly.GroupChannelH\x00R\rdeleteChannelB\t\n" +
+	"\amessage\"5\n" +
+	"\x05Error\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\x05R\x06status\x12\x14\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\"\xbd\x01\n" +
 	"\bResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x05R\x02id\x121\n" +
 	"\amembers\x18\x02 \x01(\v2\x15.firefly.GroupMembersH\x00R\amembers\x12;\n" +
-	"\bmessages\x18\x03 \x01(\v2\x1d.firefly.GroupChannelMessagesH\x00R\bmessagesB\t\n" +
-	"\amessage\"\xc3\x01\n" +
+	"\bmessages\x18\x03 \x01(\v2\x1d.firefly.GroupChannelMessagesH\x00R\bmessages\x12&\n" +
+	"\x05error\x18\x04 \x01(\v2\x0e.firefly.ErrorH\x00R\x05errorB\t\n" +
+	"\amessage\"\xf0\x01\n" +
 	"\rClientMessage\x12,\n" +
-	"\arequest\x18\x02 \x01(\v2\x10.firefly.RequestH\x00R\arequest\x12;\n" +
-	"\fgroupMessage\x18\x03 \x01(\v2\x15.firefly.GroupMessageH\x00R\fgroupMessage\x12<\n" +
-	"\tauthToken\x18\x04 \x01(\v2\x1c.firefly.AuthenticationTokenH\x00R\tauthTokenB\t\n" +
-	"\apayload\"\x88\x01\n" +
+	"\arequest\x18\x02 \x01(\v2\x10.firefly.RequestH\x00R\arequest\x12B\n" +
+	"\fgroupMessage\x18\x03 \x01(\v2\x1c.firefly.GroupChannelMessageH\x00R\fgroupMessage\x12<\n" +
+	"\tauthToken\x18\x04 \x01(\v2\x1c.firefly.AuthenticationTokenH\x00R\tauthToken\x12$\n" +
+	"\fcurrentGroup\x18\x05 \x01(\x05H\x00R\fcurrentGroupB\t\n" +
+	"\apayload\"\xfa\x01\n" +
 	"\rServerMessage\x12/\n" +
-	"\bresponse\x18\x01 \x01(\v2\x11.firefly.ResponseH\x00R\bresponse\x12;\n" +
-	"\fgroupMessage\x18\x02 \x01(\v2\x15.firefly.GroupMessageH\x00R\fgroupMessageB\t\n" +
+	"\bresponse\x18\x01 \x01(\v2\x11.firefly.ResponseH\x00R\bresponse\x125\n" +
+	"\n" +
+	"groupChats\x18\x02 \x01(\v2\x13.firefly.GroupChatsH\x00R\n" +
+	"groupChats\x122\n" +
+	"\tgroupChat\x18\x03 \x01(\v2\x12.firefly.GroupChatH\x00R\tgroupChat\x12B\n" +
+	"\fgroupMessage\x18\x04 \x01(\v2\x1c.firefly.GroupChannelMessageH\x00R\fgroupMessageB\t\n" +
 	"\amessageB\n" +
 	"Z\b./protosb\x06proto3"
 
@@ -1221,47 +1432,53 @@ func file_message_proto_rawDescGZIP() []byte {
 	return file_message_proto_rawDescData
 }
 
-var file_message_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_message_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_message_proto_goTypes = []any{
 	(*VersionedMessage)(nil),     // 0: firefly.VersionedMessage
 	(*AuthenticationToken)(nil),  // 1: firefly.AuthenticationToken
-	(*GroupChannel)(nil),         // 2: firefly.GroupChannel
-	(*GetGroupMembers)(nil),      // 3: firefly.GetGroupMembers
-	(*GetGroupMessages)(nil),     // 4: firefly.GetGroupMessages
-	(*AddUser)(nil),              // 5: firefly.AddUser
-	(*RemoveUser)(nil),           // 6: firefly.RemoveUser
-	(*GroupMember)(nil),          // 7: firefly.GroupMember
-	(*GroupChannelMessage)(nil),  // 8: firefly.GroupChannelMessage
-	(*GroupChannelMessages)(nil), // 9: firefly.GroupChannelMessages
-	(*GroupMembers)(nil),         // 10: firefly.GroupMembers
-	(*GroupMessage)(nil),         // 11: firefly.GroupMessage
-	(*Request)(nil),              // 12: firefly.Request
-	(*Response)(nil),             // 13: firefly.Response
-	(*ClientMessage)(nil),        // 14: firefly.ClientMessage
-	(*ServerMessage)(nil),        // 15: firefly.ServerMessage
+	(*GroupChats)(nil),           // 2: firefly.GroupChats
+	(*GroupChannel)(nil),         // 3: firefly.GroupChannel
+	(*GroupChat)(nil),            // 4: firefly.GroupChat
+	(*GetGroupMembers)(nil),      // 5: firefly.GetGroupMembers
+	(*GetGroupMessages)(nil),     // 6: firefly.GetGroupMessages
+	(*AddUser)(nil),              // 7: firefly.AddUser
+	(*RemoveUser)(nil),           // 8: firefly.RemoveUser
+	(*GroupMember)(nil),          // 9: firefly.GroupMember
+	(*GroupChannelMessage)(nil),  // 10: firefly.GroupChannelMessage
+	(*GroupChannelMessages)(nil), // 11: firefly.GroupChannelMessages
+	(*GroupMembers)(nil),         // 12: firefly.GroupMembers
+	(*Request)(nil),              // 13: firefly.Request
+	(*Error)(nil),                // 14: firefly.Error
+	(*Response)(nil),             // 15: firefly.Response
+	(*ClientMessage)(nil),        // 16: firefly.ClientMessage
+	(*ServerMessage)(nil),        // 17: firefly.ServerMessage
 }
 var file_message_proto_depIdxs = []int32{
-	8,  // 0: firefly.GroupChannelMessages.messages:type_name -> firefly.GroupChannelMessage
-	7,  // 1: firefly.GroupMembers.members:type_name -> firefly.GroupMember
-	5,  // 2: firefly.GroupMessage.addUser:type_name -> firefly.AddUser
-	6,  // 3: firefly.GroupMessage.removeUser:type_name -> firefly.RemoveUser
-	8,  // 4: firefly.GroupMessage.groupMessage:type_name -> firefly.GroupChannelMessage
-	2,  // 5: firefly.GroupMessage.addChannel:type_name -> firefly.GroupChannel
-	2,  // 6: firefly.GroupMessage.deleteChannel:type_name -> firefly.GroupChannel
-	3,  // 7: firefly.Request.getGroupMembers:type_name -> firefly.GetGroupMembers
-	4,  // 8: firefly.Request.getGroupMessages:type_name -> firefly.GetGroupMessages
-	10, // 9: firefly.Response.members:type_name -> firefly.GroupMembers
-	9,  // 10: firefly.Response.messages:type_name -> firefly.GroupChannelMessages
-	12, // 11: firefly.ClientMessage.request:type_name -> firefly.Request
-	11, // 12: firefly.ClientMessage.groupMessage:type_name -> firefly.GroupMessage
-	1,  // 13: firefly.ClientMessage.authToken:type_name -> firefly.AuthenticationToken
-	13, // 14: firefly.ServerMessage.response:type_name -> firefly.Response
-	11, // 15: firefly.ServerMessage.groupMessage:type_name -> firefly.GroupMessage
-	16, // [16:16] is the sub-list for method output_type
-	16, // [16:16] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	4,  // 0: firefly.GroupChats.chats:type_name -> firefly.GroupChat
+	3,  // 1: firefly.GroupChat.channels:type_name -> firefly.GroupChannel
+	10, // 2: firefly.GroupChannelMessages.messages:type_name -> firefly.GroupChannelMessage
+	9,  // 3: firefly.GroupMembers.members:type_name -> firefly.GroupMember
+	5,  // 4: firefly.Request.getGroupMembers:type_name -> firefly.GetGroupMembers
+	6,  // 5: firefly.Request.getGroupMessages:type_name -> firefly.GetGroupMessages
+	7,  // 6: firefly.Request.addUser:type_name -> firefly.AddUser
+	8,  // 7: firefly.Request.removeUser:type_name -> firefly.RemoveUser
+	3,  // 8: firefly.Request.addChannel:type_name -> firefly.GroupChannel
+	3,  // 9: firefly.Request.deleteChannel:type_name -> firefly.GroupChannel
+	12, // 10: firefly.Response.members:type_name -> firefly.GroupMembers
+	11, // 11: firefly.Response.messages:type_name -> firefly.GroupChannelMessages
+	14, // 12: firefly.Response.error:type_name -> firefly.Error
+	13, // 13: firefly.ClientMessage.request:type_name -> firefly.Request
+	10, // 14: firefly.ClientMessage.groupMessage:type_name -> firefly.GroupChannelMessage
+	1,  // 15: firefly.ClientMessage.authToken:type_name -> firefly.AuthenticationToken
+	15, // 16: firefly.ServerMessage.response:type_name -> firefly.Response
+	2,  // 17: firefly.ServerMessage.groupChats:type_name -> firefly.GroupChats
+	4,  // 18: firefly.ServerMessage.groupChat:type_name -> firefly.GroupChat
+	10, // 19: firefly.ServerMessage.groupMessage:type_name -> firefly.GroupChannelMessage
+	20, // [20:20] is the sub-list for method output_type
+	20, // [20:20] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_message_proto_init() }
@@ -1269,28 +1486,29 @@ func file_message_proto_init() {
 	if File_message_proto != nil {
 		return
 	}
-	file_message_proto_msgTypes[11].OneofWrappers = []any{
-		(*GroupMessage_AddUser)(nil),
-		(*GroupMessage_RemoveUser)(nil),
-		(*GroupMessage_GroupMessage)(nil),
-		(*GroupMessage_AddChannel)(nil),
-		(*GroupMessage_DeleteChannel)(nil),
-	}
-	file_message_proto_msgTypes[12].OneofWrappers = []any{
+	file_message_proto_msgTypes[13].OneofWrappers = []any{
 		(*Request_GetGroupMembers)(nil),
 		(*Request_GetGroupMessages)(nil),
+		(*Request_AddUser)(nil),
+		(*Request_RemoveUser)(nil),
+		(*Request_AddChannel)(nil),
+		(*Request_DeleteChannel)(nil),
 	}
-	file_message_proto_msgTypes[13].OneofWrappers = []any{
+	file_message_proto_msgTypes[15].OneofWrappers = []any{
 		(*Response_Members)(nil),
 		(*Response_Messages)(nil),
+		(*Response_Error)(nil),
 	}
-	file_message_proto_msgTypes[14].OneofWrappers = []any{
+	file_message_proto_msgTypes[16].OneofWrappers = []any{
 		(*ClientMessage_Request)(nil),
 		(*ClientMessage_GroupMessage)(nil),
 		(*ClientMessage_AuthToken)(nil),
+		(*ClientMessage_CurrentGroup)(nil),
 	}
-	file_message_proto_msgTypes[15].OneofWrappers = []any{
+	file_message_proto_msgTypes[17].OneofWrappers = []any{
 		(*ServerMessage_Response)(nil),
+		(*ServerMessage_GroupChats)(nil),
+		(*ServerMessage_GroupChat)(nil),
 		(*ServerMessage_GroupMessage)(nil),
 	}
 	type x struct{}
@@ -1299,7 +1517,7 @@ func file_message_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_message_proto_rawDesc), len(file_message_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -179,7 +179,7 @@ func MaxULIDAt(timestamp uint64) ulid.ULID {
 
 }
 
-func GetMessages(db *pgxpool.Pool, group_id int, channel_id int, before uuid.UUID, count uint64) ([]*protos.GroupChannelMessage, error) {
+func GetMessages(db *pgxpool.Pool, group_id int, channelId int, before uuid.UUID, count uint64) ([]*protos.GroupChannelMessage, error) {
 
 	const stmt = "SELECT id, by, msg FROM groupmessages WHERE grpId = $1 AND chanId = $2 AND id < $3 LIMIT $4"
 	rows, err := db.Query(context.TODO(), stmt, before, count)
@@ -201,7 +201,7 @@ func GetMessages(db *pgxpool.Pool, group_id int, channel_id int, before uuid.UUI
 		message := protos.GroupChannelMessage{}
 
 		message.Id = id[:]
-		message.InChannel = int32(channel_id)
+		message.ChannelId = int32(channelId)
 		message.Content = msg
 		message.By = by
 		messages = append(messages, &message)
@@ -210,12 +210,12 @@ func GetMessages(db *pgxpool.Pool, group_id int, channel_id int, before uuid.UUI
 	return messages, nil
 }
 
-func AddChannelMessage(db *pgxpool.Pool, groupId int, msg *protos.GroupChannelMessage) (*protos.GroupChannelMessage, error) {
+func AddChannelMessage(db *pgxpool.Pool, msg *protos.GroupChannelMessage) (*protos.GroupChannelMessage, error) {
 	stmt := "INSERT INTO groupmessages (id, grpId, chanId, msg, by) VALUES ($1, $2, $3, $4, $5)"
 
 	id := uuid.UUID([16]byte(NewUlid(ulid.Now())))
 
-	_, err := db.Exec(context.TODO(), stmt, id, groupId, msg.GetInChannel(), msg.GetContent(), msg.GetBy())
+	_, err := db.Exec(context.TODO(), stmt, id, msg.GetGroupId(), msg.GetChannelId(), msg.GetContent(), msg.GetBy())
 
 	msg.Id = id[:]
 
@@ -329,6 +329,36 @@ func GetAllUsers(db *pgxpool.Pool, groupId int) ([]*protos.GroupMember, error) {
 	return users, nil
 }
 
+func GetChannelsUserHasAccessTo(db *pgxpool.Pool, grpId int, username string) ([]*protos.GroupChannel, error) {
+	channels := make([]*protos.GroupChannel, 0, 20)
+	rows, err := db.Query(context.TODO(), "SELECT gc.chanId, gc.name, gc.chanType FROM groupmembers gm JOIN groupchannels gc ON gm.grpId = gc.grpId WHERE gm.grpId = $1 AND gm.uname = $2", grpId, username)
+
+	if err != nil {
+		return channels, err
+	}
+
+	for rows.Next() {
+		var chanId int
+		var name string
+		var chanType int
+
+		err := rows.Scan(&chanId, &name, &chanType)
+		if err != nil {
+			return channels, err
+		}
+		channel := protos.GroupChannel{
+			ChannelType: int32(chanType),
+			Name:        name,
+			ChannelId:   int32(chanId),
+		}
+
+		channels = append(channels, &channel)
+	}
+
+	return channels, nil
+
+}
+
 func GetAllChannels(db *pgxpool.Pool, grpId int) ([]*protos.GroupChannel, error) {
 	channels := make([]*protos.GroupChannel, 0, 20)
 	rows, err := db.Query(context.TODO(), "SELECT chanId, name, chanType FROM groupchannels WHERE grpId = $1", grpId)
@@ -346,14 +376,44 @@ func GetAllChannels(db *pgxpool.Pool, grpId int) ([]*protos.GroupChannel, error)
 		if err != nil {
 			return channels, err
 		}
-		channel := protos.GroupChannel{}
-
-		channel.ChannelType = int32(chanType)
-		channel.Name = name
-		channel.Id = int32(chanId)
+		channel := protos.GroupChannel{
+			ChannelType: int32(chanType),
+			Name:        name,
+			ChannelId:   int32(chanId),
+		}
 
 		channels = append(channels, &channel)
 	}
 
 	return channels, nil
+}
+
+func GetAllGroupChatsUserIn(db *pgxpool.Pool, username string) (*protos.GroupChats, error) {
+	rows, err := db.Query(context.TODO(), "SELECT UNIQUE(gm.grpId), gc.name, FROM groupmembers gm JOIN groupchats gc ON gc.id = gm.grpId WHERE gm.uname = $1", username)
+	var groups = &protos.GroupChats{
+		Chats: make([]*protos.GroupChat, 0),
+	}
+	if err != nil {
+		return groups, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var groupId int
+		var groupName string
+		err := rows.Scan(&groupId, &groupName)
+		if err != nil {
+			return groups, err
+		}
+
+		chat := protos.GroupChat{
+			Name:    groupName,
+			GroupId: int32(groupId),
+		}
+
+		groups.Chats = append(groups.Chats, &chat)
+
+	}
+
+	return groups, nil
 }
