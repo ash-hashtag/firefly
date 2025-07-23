@@ -499,9 +499,6 @@ func StartServer(addr string) {
 	fs := http.FileServer(http.Dir("./public"))
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) { WebsocketHandler(w, r, &state) })
-	http.HandleFunc("/groups", func(w http.ResponseWriter, r *http.Request) {
-
-	})
 	http.Handle("/", http.StripPrefix("/", fs))
 	http.HandleFunc("/egg", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Egg"))

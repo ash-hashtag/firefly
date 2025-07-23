@@ -12,6 +12,7 @@ import (
 	"log"
 	"math/big"
 	"net/http"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -170,6 +171,27 @@ func (self *PublicKeysHandler) GetKeyWithKid(kid string) *rsa.PublicKey {
 }
 
 func (self *PublicKeysHandler) VerifyToken(token string) *VerifiedToken {
+
+	if "true" == os.Getenv("EMULATOR_MODE") {
+
+		var m map[string]any
+		err := json.Unmarshal([]byte(token), &m)
+		if err != nil {
+			log.Print(err)
+			return nil
+		}
+
+		hasAll := m["uname"] != nil && m["perms"] != nil && m["exp"] != nil
+		if !hasAll {
+			return nil
+		}
+
+		return &VerifiedToken{
+			Username:    m["uname"].(string),
+			Permissions: int64(m["perms"].(int)),
+			Expires:     int64(m["exp"].(int)),
+		}
+	}
 
 	if self.AreExpired() {
 		self.GetKeys()

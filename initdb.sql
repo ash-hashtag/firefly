@@ -59,7 +59,7 @@ $$;
 CREATE TABLE IF NOT EXISTS groupchats (
     id SERIAL NOT NULL PRIMARY KEY,
     created_by VARCHAR NOT NULL,
-    name VARCHAR NOT NULL,
+    name VARCHAR NOT NULL
 );
 
 
@@ -81,23 +81,25 @@ CREATE TABLE IF NOT EXISTS groupchannels (
 
 
 
+CREATE TABLE IF NOT EXISTS grouproles (
+    grpId INTEGER REFERENCES groupchats (id) NOT NULL,
+    role INTEGER NOT NULL,
+    name VARCHAR NOT NULL,
+    perms INTEGER NOT NULL,
+    -- bitset permissions
+
+    PRIMARY KEY (grpId, role)
+);
 
 CREATE TABLE IF NOT EXISTS groupmembers (
     grpId INTEGER REFERENCES groupchats (id) NOT NULL,
     chanId INTEGER NOT NULL,
     uname VARCHAR NOT NULL,
     role INTEGER NOT NULL DEFAULT 0,
-    PRIMARY KEY (grpId, chanId, uname)
-);
+    PRIMARY KEY (grpId, chanId, uname),
+    FOREIGN KEY (grpId, role) REFERENCES grouproles (grpId, role) 
+    FOREIGN KEY (grpId, chanId) REFERENCES groupchannels (grpId, chanId), 
 
-CREATE TABLE IF NOT EXISTS grouproles (
-    grpId INTEGER REFERENCES groupchats (id) NOT NULL,
-    role INTEGER NOT NULL,
-    name VARCHAR NOT NULL,
-    perms INTEGER NOT NULL
-    -- bitset permissions
-
-    PRIMARY KEY (grpId, role)
 );
 
 
@@ -105,39 +107,74 @@ CREATE INDEX IF NOT EXISTS uname_idx_on_groupmembers ON groupmembers (uname);
 
 
 CREATE TABLE IF NOT EXISTS groupmessages (
-    id UUID NOT NULL PRIMARY KEY DEFAULT generate_ulid();
+    id UUID NOT NULL PRIMARY KEY DEFAULT generate_ulid(),
     grpId INTEGER NOT NULL,
     chanId INTEGER NOT NULL,
     msg TEXT NOT NULL,
-    by VARCHAR NOT NULL REFERENCES groupmembers ( uname )
+    by VARCHAR NOT NULL,
+    FOREIGN KEY (grpId, chanId, by) REFERENCES groupmembers (grpId, chanId, uname) 
 );
 
 CREATE INDEX IF NOT EXISTS grp_chan_index ON groupmessages (grpId, chanId);
 
 
-
-CREATE OR REPLACE FUNCTION create_group_channel (groupId VARCHAR, chanType SMALLINT, chanName VARCHAR, createdBy VARCHAR) RETURNS INTEGER AS
+CREATE OR REPLACE FUNCTION on_group_chat_created() RETURNS TRIGGER AS
 $$
 BEGIN
- IF NOT EXISTS (
-        SELECT 1
-        FROM groupmembers gm
-        JOIN grouproles gr ON gr.grpId = gm.grpId AND gr.role = gm.role
-        WHERE gm.grpId = groupId
-          AND gm.chanId = channelId
-          AND gm.uname = createdBy
-          AND (gr.perms & 1) = 1
-    ) THEN
+
+    INSERT INTO grouproles (grpId, role, name, perms) VALUES (NEW.id, 0, 'owner', -1);
+
+    INSERT INTO groupchannels (grpId, chanId, name, chanType) VALUES (NEW.id, 0, 'default', 0);
+
+    INSERT INTO groupmembers (grpId, chanId, uname, role) VALUES (NEW.id, 0, NEW.created_by, 0);
+
+    RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+
+
+CREATE TRIGGER on_group_chat_created_trigger
+AFTER INSERT ON groupchats
+FOR EACH ROW EXECUTE FUNCTION on_group_chat_created();
+
+CREATE OR REPLACE FUNCTION create_group_channel (groupId INTEGER, channelType SMALLINT, channelName VARCHAR, createdBy VARCHAR) RETURNS INTEGER AS
+$$
+DECLARE
+creatorRole INTEGER;
+creatorPerms INTEGER;
+newChanId INTEGER;
+BEGIN
+
+    SELECT gr.perms, gr.role INTO creatorPerms, creatorRole FROM groupmembers gm JOIN grouproles gr ON gr.grpId = gm.grpId AND gr.role = gm.role WHERE gm.grpId = groupId AND gm.uname = createdBy AND (gr.perms & 1) = 1;
+
+    IF creatorPerms IS NULL THEN
         RAISE NOTICE 'adder either not in channel/group or lacks permission';
     END IF;
-
+    
+ -- IF NOT EXISTS (
+ --        SELECT 1
+ --        FROM groupmembers gm
+ --        JOIN grouproles gr ON gr.grpId = gm.grpId AND gr.role = gm.role
+ --        WHERE gm.grpId = groupId
+ --          AND gm.uname = createdBy
+ --          AND (gr.perms & 1) = 1
+ --    ) THEN
+ --        RAISE NOTICE 'adder either not in channel/group or lacks permission';
+ --    END IF;
 
 
     INSERT INTO groupchannels (grpId, chanId, name, chanType)
-    SELECT groupId, COALESCE((
-        SELECT MAX(chanId) FROM groupchannels WHERE grpId = groupId
-    ), 0) + 1, chanName, chanType
-    RETURNING chanId;
+    SELECT grpId, MAX(chanId) +1, channelName, channelType FROM groupchannels WHERE grpId = groupId GROUP BY grpId
+    RETURNING chanId INTO newChanId;
+
+    -- add creator
+    INSERT INTO groupmembers (grpId, chanId, uname, role) VALUES (groupId, newChanId, createdBy, creatorRole);
+
+    -- add owner
+    INSERT INTO groupmembers (grpId, chanId, uname, role) SELECT groupId, newChanId, created_by, 0 FROM groupchats WHERE id = groupId ON CONFLICT DO NOTHING;
+
+    RETURN newChanId;
 
 END
 $$ LANGUAGE plpgsql;
@@ -150,19 +187,10 @@ adderPerms INTEGER;
 addeePerms INTEGER;
 BEGIN
 
-    SELECT COALESCE(perms, -1) INTO adderPerms FROM groupmembers gm
-    JOIN grouproles gr ON gr.grpId = gm.grpId AND gr.role = gm.role
-    WHERE gm.grpId = groupId AND gm.chanId = channelId AND gm.uname = addedBy; 
+    SELECT gr.perms, gr.role INTO adderPerms, addeeRole FROM groupmembers gm JOIN grouproles gr ON gr.grpId = gm.grpId AND gr.role = gm.role WHERE gm.grpId = groupId AND gm.chanId = channelId AND gm.uname = createdBy AND (gr.perms & 4) = 4;
 
-    IF adderPerms = -1 OR adderPerms & 4 <> 4 THEN
-        RAISE NOTICE 'adder either not in channel/group or lacks permissions'
-    END IF;
-
-
-    SELECT COALESCE(perms, -1) INTO addeePerms FROM grouproles WHERE role = urole;
-
-    IF addeePerms = -1 OR addeePerms & adderPerms <> addeePerms THEN
-        RAISE NOTICE 'addee role does not exist, or adder doesnot have enough authority to assign the role'
+    IF adderPerms IS NULL THEN
+        RAISE NOTICE 'adder either not in channel/group or lacks permission';
     END IF;
 
     INSERT INTO groupmembers (grpId, chanId, uname, role) VALUES (groupId, channelId, username, urole);
