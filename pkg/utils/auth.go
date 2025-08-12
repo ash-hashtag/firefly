@@ -169,6 +169,16 @@ func (self *PublicKeysHandler) GetKeyWithKid(kid string) *rsa.PublicKey {
 	return nil
 
 }
+func (self *PublicKeysHandler) VerifyTokenFromHeaders(headers http.Header) *VerifiedToken {
+	authHeader := headers.Get("authorization")
+	token, cut := strings.CutPrefix(authHeader, "Bearer ")
+
+	if cut && len(token) > 0 {
+		return self.VerifyToken(token)
+	}
+
+	return nil
+}
 
 func (self *PublicKeysHandler) VerifyToken(token string) *VerifiedToken {
 

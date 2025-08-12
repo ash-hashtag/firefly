@@ -785,6 +785,66 @@ func (x *GroupMembers) GetMembers() []*GroupMember {
 	return nil
 }
 
+type GetUserMessages struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Before        []byte                 `protobuf:"bytes,1,opt,name=before,proto3" json:"before,omitempty"`
+	Count         int32                  `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
+	From          string                 `protobuf:"bytes,3,opt,name=from,proto3" json:"from,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUserMessages) Reset() {
+	*x = GetUserMessages{}
+	mi := &file_message_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUserMessages) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUserMessages) ProtoMessage() {}
+
+func (x *GetUserMessages) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUserMessages.ProtoReflect.Descriptor instead.
+func (*GetUserMessages) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetUserMessages) GetBefore() []byte {
+	if x != nil {
+		return x.Before
+	}
+	return nil
+}
+
+func (x *GetUserMessages) GetCount() int32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+func (x *GetUserMessages) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
 type Request struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -796,6 +856,7 @@ type Request struct {
 	//	*Request_RemoveUser
 	//	*Request_AddChannel
 	//	*Request_DeleteChannel
+	//	*Request_GetUserMessages
 	Message       isRequest_Message `protobuf_oneof:"message"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -803,7 +864,7 @@ type Request struct {
 
 func (x *Request) Reset() {
 	*x = Request{}
-	mi := &file_message_proto_msgTypes[13]
+	mi := &file_message_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -815,7 +876,7 @@ func (x *Request) String() string {
 func (*Request) ProtoMessage() {}
 
 func (x *Request) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[13]
+	mi := &file_message_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -828,7 +889,7 @@ func (x *Request) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Request.ProtoReflect.Descriptor instead.
 func (*Request) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{13}
+	return file_message_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *Request) GetId() int32 {
@@ -899,6 +960,15 @@ func (x *Request) GetDeleteChannel() *GroupChannel {
 	return nil
 }
 
+func (x *Request) GetGetUserMessages() *GetUserMessages {
+	if x != nil {
+		if x, ok := x.Message.(*Request_GetUserMessages); ok {
+			return x.GetUserMessages
+		}
+	}
+	return nil
+}
+
 type isRequest_Message interface {
 	isRequest_Message()
 }
@@ -927,6 +997,10 @@ type Request_DeleteChannel struct {
 	DeleteChannel *GroupChannel `protobuf:"bytes,7,opt,name=deleteChannel,proto3,oneof"`
 }
 
+type Request_GetUserMessages struct {
+	GetUserMessages *GetUserMessages `protobuf:"bytes,8,opt,name=getUserMessages,proto3,oneof"`
+}
+
 func (*Request_GetGroupMembers) isRequest_Message() {}
 
 func (*Request_GetGroupMessages) isRequest_Message() {}
@@ -939,6 +1013,8 @@ func (*Request_AddChannel) isRequest_Message() {}
 
 func (*Request_DeleteChannel) isRequest_Message() {}
 
+func (*Request_GetUserMessages) isRequest_Message() {}
+
 type Error struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Status        int32                  `protobuf:"varint,1,opt,name=status,proto3" json:"status,omitempty"`
@@ -949,7 +1025,7 @@ type Error struct {
 
 func (x *Error) Reset() {
 	*x = Error{}
-	mi := &file_message_proto_msgTypes[14]
+	mi := &file_message_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -961,7 +1037,7 @@ func (x *Error) String() string {
 func (*Error) ProtoMessage() {}
 
 func (x *Error) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[14]
+	mi := &file_message_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -974,7 +1050,7 @@ func (x *Error) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Error.ProtoReflect.Descriptor instead.
 func (*Error) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{14}
+	return file_message_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *Error) GetStatus() int32 {
@@ -996,9 +1072,10 @@ type Response struct {
 	Id    int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Types that are valid to be assigned to Message:
 	//
-	//	*Response_Members
-	//	*Response_Messages
 	//	*Response_Error
+	//	*Response_GroupMembers
+	//	*Response_GroupMessages
+	//	*Response_UserMessages
 	Message       isResponse_Message `protobuf_oneof:"message"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1006,7 +1083,7 @@ type Response struct {
 
 func (x *Response) Reset() {
 	*x = Response{}
-	mi := &file_message_proto_msgTypes[15]
+	mi := &file_message_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1018,7 +1095,7 @@ func (x *Response) String() string {
 func (*Response) ProtoMessage() {}
 
 func (x *Response) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[15]
+	mi := &file_message_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1031,7 +1108,7 @@ func (x *Response) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Response.ProtoReflect.Descriptor instead.
 func (*Response) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{15}
+	return file_message_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *Response) GetId() int32 {
@@ -1048,24 +1125,6 @@ func (x *Response) GetMessage() isResponse_Message {
 	return nil
 }
 
-func (x *Response) GetMembers() *GroupMembers {
-	if x != nil {
-		if x, ok := x.Message.(*Response_Members); ok {
-			return x.Members
-		}
-	}
-	return nil
-}
-
-func (x *Response) GetMessages() *GroupChannelMessages {
-	if x != nil {
-		if x, ok := x.Message.(*Response_Messages); ok {
-			return x.Messages
-		}
-	}
-	return nil
-}
-
 func (x *Response) GetError() *Error {
 	if x != nil {
 		if x, ok := x.Message.(*Response_Error); ok {
@@ -1075,27 +1134,60 @@ func (x *Response) GetError() *Error {
 	return nil
 }
 
+func (x *Response) GetGroupMembers() *GroupMembers {
+	if x != nil {
+		if x, ok := x.Message.(*Response_GroupMembers); ok {
+			return x.GroupMembers
+		}
+	}
+	return nil
+}
+
+func (x *Response) GetGroupMessages() *GroupChannelMessages {
+	if x != nil {
+		if x, ok := x.Message.(*Response_GroupMessages); ok {
+			return x.GroupMessages
+		}
+	}
+	return nil
+}
+
+func (x *Response) GetUserMessages() *UserMessages {
+	if x != nil {
+		if x, ok := x.Message.(*Response_UserMessages); ok {
+			return x.UserMessages
+		}
+	}
+	return nil
+}
+
 type isResponse_Message interface {
 	isResponse_Message()
 }
 
-type Response_Members struct {
-	Members *GroupMembers `protobuf:"bytes,2,opt,name=members,proto3,oneof"`
-}
-
-type Response_Messages struct {
-	Messages *GroupChannelMessages `protobuf:"bytes,3,opt,name=messages,proto3,oneof"`
-}
-
 type Response_Error struct {
-	Error *Error `protobuf:"bytes,4,opt,name=error,proto3,oneof"`
+	Error *Error `protobuf:"bytes,2,opt,name=error,proto3,oneof"`
 }
 
-func (*Response_Members) isResponse_Message() {}
+type Response_GroupMembers struct {
+	GroupMembers *GroupMembers `protobuf:"bytes,3,opt,name=groupMembers,proto3,oneof"`
+}
 
-func (*Response_Messages) isResponse_Message() {}
+type Response_GroupMessages struct {
+	GroupMessages *GroupChannelMessages `protobuf:"bytes,4,opt,name=groupMessages,proto3,oneof"`
+}
+
+type Response_UserMessages struct {
+	UserMessages *UserMessages `protobuf:"bytes,5,opt,name=userMessages,proto3,oneof"`
+}
 
 func (*Response_Error) isResponse_Message() {}
+
+func (*Response_GroupMembers) isResponse_Message() {}
+
+func (*Response_GroupMessages) isResponse_Message() {}
+
+func (*Response_UserMessages) isResponse_Message() {}
 
 type ClientMessage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1105,6 +1197,7 @@ type ClientMessage struct {
 	//	*ClientMessage_GroupMessage
 	//	*ClientMessage_AuthToken
 	//	*ClientMessage_CurrentGroup
+	//	*ClientMessage_UserMessage
 	Payload       isClientMessage_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1112,7 +1205,7 @@ type ClientMessage struct {
 
 func (x *ClientMessage) Reset() {
 	*x = ClientMessage{}
-	mi := &file_message_proto_msgTypes[16]
+	mi := &file_message_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1124,7 +1217,7 @@ func (x *ClientMessage) String() string {
 func (*ClientMessage) ProtoMessage() {}
 
 func (x *ClientMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[16]
+	mi := &file_message_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1137,7 +1230,7 @@ func (x *ClientMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientMessage.ProtoReflect.Descriptor instead.
 func (*ClientMessage) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{16}
+	return file_message_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ClientMessage) GetPayload() isClientMessage_Payload {
@@ -1183,6 +1276,15 @@ func (x *ClientMessage) GetCurrentGroup() int32 {
 	return 0
 }
 
+func (x *ClientMessage) GetUserMessage() *UserMessage {
+	if x != nil {
+		if x, ok := x.Payload.(*ClientMessage_UserMessage); ok {
+			return x.UserMessage
+		}
+	}
+	return nil
+}
+
 type isClientMessage_Payload interface {
 	isClientMessage_Payload()
 }
@@ -1203,6 +1305,10 @@ type ClientMessage_CurrentGroup struct {
 	CurrentGroup int32 `protobuf:"varint,5,opt,name=currentGroup,proto3,oneof"`
 }
 
+type ClientMessage_UserMessage struct {
+	UserMessage *UserMessage `protobuf:"bytes,6,opt,name=userMessage,proto3,oneof"`
+}
+
 func (*ClientMessage_Request) isClientMessage_Payload() {}
 
 func (*ClientMessage_GroupMessage) isClientMessage_Payload() {}
@@ -1210,6 +1316,8 @@ func (*ClientMessage_GroupMessage) isClientMessage_Payload() {}
 func (*ClientMessage_AuthToken) isClientMessage_Payload() {}
 
 func (*ClientMessage_CurrentGroup) isClientMessage_Payload() {}
+
+func (*ClientMessage_UserMessage) isClientMessage_Payload() {}
 
 type ServerMessage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1219,6 +1327,8 @@ type ServerMessage struct {
 	//	*ServerMessage_GroupChats
 	//	*ServerMessage_GroupChat
 	//	*ServerMessage_GroupMessage
+	//	*ServerMessage_UserMessage
+	//	*ServerMessage_UserChats
 	Message       isServerMessage_Message `protobuf_oneof:"message"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1226,7 +1336,7 @@ type ServerMessage struct {
 
 func (x *ServerMessage) Reset() {
 	*x = ServerMessage{}
-	mi := &file_message_proto_msgTypes[17]
+	mi := &file_message_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1238,7 +1348,7 @@ func (x *ServerMessage) String() string {
 func (*ServerMessage) ProtoMessage() {}
 
 func (x *ServerMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_message_proto_msgTypes[17]
+	mi := &file_message_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1251,7 +1361,7 @@ func (x *ServerMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerMessage.ProtoReflect.Descriptor instead.
 func (*ServerMessage) Descriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{17}
+	return file_message_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ServerMessage) GetMessage() isServerMessage_Message {
@@ -1297,6 +1407,24 @@ func (x *ServerMessage) GetGroupMessage() *GroupChannelMessage {
 	return nil
 }
 
+func (x *ServerMessage) GetUserMessage() *UserMessage {
+	if x != nil {
+		if x, ok := x.Message.(*ServerMessage_UserMessage); ok {
+			return x.UserMessage
+		}
+	}
+	return nil
+}
+
+func (x *ServerMessage) GetUserChats() *UserMessages {
+	if x != nil {
+		if x, ok := x.Message.(*ServerMessage_UserChats); ok {
+			return x.UserChats
+		}
+	}
+	return nil
+}
+
 type isServerMessage_Message interface {
 	isServerMessage_Message()
 }
@@ -1317,6 +1445,14 @@ type ServerMessage_GroupMessage struct {
 	GroupMessage *GroupChannelMessage `protobuf:"bytes,4,opt,name=groupMessage,proto3,oneof"`
 }
 
+type ServerMessage_UserMessage struct {
+	UserMessage *UserMessage `protobuf:"bytes,5,opt,name=userMessage,proto3,oneof"`
+}
+
+type ServerMessage_UserChats struct {
+	UserChats *UserMessages `protobuf:"bytes,6,opt,name=userChats,proto3,oneof"`
+}
+
 func (*ServerMessage_Response) isServerMessage_Message() {}
 
 func (*ServerMessage_GroupChats) isServerMessage_Message() {}
@@ -1324,6 +1460,130 @@ func (*ServerMessage_GroupChats) isServerMessage_Message() {}
 func (*ServerMessage_GroupChat) isServerMessage_Message() {}
 
 func (*ServerMessage_GroupMessage) isServerMessage_Message() {}
+
+func (*ServerMessage_UserMessage) isServerMessage_Message() {}
+
+func (*ServerMessage_UserChats) isServerMessage_Message() {}
+
+type UserMessage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            []byte                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Version       int32                  `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
+	Text          string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
+	To            string                 `protobuf:"bytes,4,opt,name=to,proto3" json:"to,omitempty"`
+	From          string                 `protobuf:"bytes,5,opt,name=from,proto3" json:"from,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserMessage) Reset() {
+	*x = UserMessage{}
+	mi := &file_message_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserMessage) ProtoMessage() {}
+
+func (x *UserMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserMessage.ProtoReflect.Descriptor instead.
+func (*UserMessage) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *UserMessage) GetId() []byte {
+	if x != nil {
+		return x.Id
+	}
+	return nil
+}
+
+func (x *UserMessage) GetVersion() int32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *UserMessage) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *UserMessage) GetTo() string {
+	if x != nil {
+		return x.To
+	}
+	return ""
+}
+
+func (x *UserMessage) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+type UserMessages struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Messages      []*UserMessage         `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserMessages) Reset() {
+	*x = UserMessages{}
+	mi := &file_message_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserMessages) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserMessages) ProtoMessage() {}
+
+func (x *UserMessages) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserMessages.ProtoReflect.Descriptor instead.
+func (*UserMessages) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *UserMessages) GetMessages() []*UserMessage {
+	if x != nil {
+		return x.Messages
+	}
+	return nil
+}
 
 var File_message_proto protoreflect.FileDescriptor
 
@@ -1381,7 +1641,11 @@ const file_message_proto_rawDesc = "" +
 	"\x14GroupChannelMessages\x128\n" +
 	"\bmessages\x18\x01 \x03(\v2\x1c.firefly.GroupChannelMessageR\bmessages\">\n" +
 	"\fGroupMembers\x12.\n" +
-	"\amembers\x18\x01 \x03(\v2\x14.firefly.GroupMemberR\amembers\"\x90\x03\n" +
+	"\amembers\x18\x01 \x03(\v2\x14.firefly.GroupMemberR\amembers\"S\n" +
+	"\x0fGetUserMessages\x12\x16\n" +
+	"\x06before\x18\x01 \x01(\fR\x06before\x12\x14\n" +
+	"\x05count\x18\x02 \x01(\x05R\x05count\x12\x12\n" +
+	"\x04from\x18\x03 \x01(\tR\x04from\"\xd6\x03\n" +
 	"\aRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x05R\x02id\x12D\n" +
 	"\x0fgetGroupMembers\x18\x02 \x01(\v2\x18.firefly.GetGroupMembersH\x00R\x0fgetGroupMembers\x12G\n" +
@@ -1393,31 +1657,44 @@ const file_message_proto_rawDesc = "" +
 	"\n" +
 	"addChannel\x18\x06 \x01(\v2\x15.firefly.GroupChannelH\x00R\n" +
 	"addChannel\x12=\n" +
-	"\rdeleteChannel\x18\a \x01(\v2\x15.firefly.GroupChannelH\x00R\rdeleteChannelB\t\n" +
+	"\rdeleteChannel\x18\a \x01(\v2\x15.firefly.GroupChannelH\x00R\rdeleteChannel\x12D\n" +
+	"\x0fgetUserMessages\x18\b \x01(\v2\x18.firefly.GetUserMessagesH\x00R\x0fgetUserMessagesB\t\n" +
 	"\amessage\"5\n" +
 	"\x05Error\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\x05R\x06status\x12\x14\n" +
-	"\x05error\x18\x02 \x01(\tR\x05error\"\xbd\x01\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\"\x8e\x02\n" +
 	"\bResponse\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x05R\x02id\x121\n" +
-	"\amembers\x18\x02 \x01(\v2\x15.firefly.GroupMembersH\x00R\amembers\x12;\n" +
-	"\bmessages\x18\x03 \x01(\v2\x1d.firefly.GroupChannelMessagesH\x00R\bmessages\x12&\n" +
-	"\x05error\x18\x04 \x01(\v2\x0e.firefly.ErrorH\x00R\x05errorB\t\n" +
-	"\amessage\"\xf0\x01\n" +
+	"\x02id\x18\x01 \x01(\x05R\x02id\x12&\n" +
+	"\x05error\x18\x02 \x01(\v2\x0e.firefly.ErrorH\x00R\x05error\x12;\n" +
+	"\fgroupMembers\x18\x03 \x01(\v2\x15.firefly.GroupMembersH\x00R\fgroupMembers\x12E\n" +
+	"\rgroupMessages\x18\x04 \x01(\v2\x1d.firefly.GroupChannelMessagesH\x00R\rgroupMessages\x12;\n" +
+	"\fuserMessages\x18\x05 \x01(\v2\x15.firefly.UserMessagesH\x00R\fuserMessagesB\t\n" +
+	"\amessage\"\xaa\x02\n" +
 	"\rClientMessage\x12,\n" +
 	"\arequest\x18\x02 \x01(\v2\x10.firefly.RequestH\x00R\arequest\x12B\n" +
 	"\fgroupMessage\x18\x03 \x01(\v2\x1c.firefly.GroupChannelMessageH\x00R\fgroupMessage\x12<\n" +
 	"\tauthToken\x18\x04 \x01(\v2\x1c.firefly.AuthenticationTokenH\x00R\tauthToken\x12$\n" +
-	"\fcurrentGroup\x18\x05 \x01(\x05H\x00R\fcurrentGroupB\t\n" +
-	"\apayload\"\xfa\x01\n" +
+	"\fcurrentGroup\x18\x05 \x01(\x05H\x00R\fcurrentGroup\x128\n" +
+	"\vuserMessage\x18\x06 \x01(\v2\x14.firefly.UserMessageH\x00R\vuserMessageB\t\n" +
+	"\apayload\"\xeb\x02\n" +
 	"\rServerMessage\x12/\n" +
 	"\bresponse\x18\x01 \x01(\v2\x11.firefly.ResponseH\x00R\bresponse\x125\n" +
 	"\n" +
 	"groupChats\x18\x02 \x01(\v2\x13.firefly.GroupChatsH\x00R\n" +
 	"groupChats\x122\n" +
 	"\tgroupChat\x18\x03 \x01(\v2\x12.firefly.GroupChatH\x00R\tgroupChat\x12B\n" +
-	"\fgroupMessage\x18\x04 \x01(\v2\x1c.firefly.GroupChannelMessageH\x00R\fgroupMessageB\t\n" +
-	"\amessageB\n" +
+	"\fgroupMessage\x18\x04 \x01(\v2\x1c.firefly.GroupChannelMessageH\x00R\fgroupMessage\x128\n" +
+	"\vuserMessage\x18\x05 \x01(\v2\x14.firefly.UserMessageH\x00R\vuserMessage\x125\n" +
+	"\tuserChats\x18\x06 \x01(\v2\x15.firefly.UserMessagesH\x00R\tuserChatsB\t\n" +
+	"\amessage\"o\n" +
+	"\vUserMessage\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\fR\x02id\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\x05R\aversion\x12\x12\n" +
+	"\x04text\x18\x03 \x01(\tR\x04text\x12\x0e\n" +
+	"\x02to\x18\x04 \x01(\tR\x02to\x12\x12\n" +
+	"\x04from\x18\x05 \x01(\tR\x04from\"@\n" +
+	"\fUserMessages\x120\n" +
+	"\bmessages\x18\x01 \x03(\v2\x14.firefly.UserMessageR\bmessagesB\n" +
 	"Z\b./protosb\x06proto3"
 
 var (
@@ -1432,7 +1709,7 @@ func file_message_proto_rawDescGZIP() []byte {
 	return file_message_proto_rawDescData
 }
 
-var file_message_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_message_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_message_proto_goTypes = []any{
 	(*VersionedMessage)(nil),     // 0: firefly.VersionedMessage
 	(*AuthenticationToken)(nil),  // 1: firefly.AuthenticationToken
@@ -1447,11 +1724,14 @@ var file_message_proto_goTypes = []any{
 	(*GroupChannelMessage)(nil),  // 10: firefly.GroupChannelMessage
 	(*GroupChannelMessages)(nil), // 11: firefly.GroupChannelMessages
 	(*GroupMembers)(nil),         // 12: firefly.GroupMembers
-	(*Request)(nil),              // 13: firefly.Request
-	(*Error)(nil),                // 14: firefly.Error
-	(*Response)(nil),             // 15: firefly.Response
-	(*ClientMessage)(nil),        // 16: firefly.ClientMessage
-	(*ServerMessage)(nil),        // 17: firefly.ServerMessage
+	(*GetUserMessages)(nil),      // 13: firefly.GetUserMessages
+	(*Request)(nil),              // 14: firefly.Request
+	(*Error)(nil),                // 15: firefly.Error
+	(*Response)(nil),             // 16: firefly.Response
+	(*ClientMessage)(nil),        // 17: firefly.ClientMessage
+	(*ServerMessage)(nil),        // 18: firefly.ServerMessage
+	(*UserMessage)(nil),          // 19: firefly.UserMessage
+	(*UserMessages)(nil),         // 20: firefly.UserMessages
 }
 var file_message_proto_depIdxs = []int32{
 	4,  // 0: firefly.GroupChats.chats:type_name -> firefly.GroupChat
@@ -1464,21 +1744,27 @@ var file_message_proto_depIdxs = []int32{
 	8,  // 7: firefly.Request.removeUser:type_name -> firefly.RemoveUser
 	3,  // 8: firefly.Request.addChannel:type_name -> firefly.GroupChannel
 	3,  // 9: firefly.Request.deleteChannel:type_name -> firefly.GroupChannel
-	12, // 10: firefly.Response.members:type_name -> firefly.GroupMembers
-	11, // 11: firefly.Response.messages:type_name -> firefly.GroupChannelMessages
-	14, // 12: firefly.Response.error:type_name -> firefly.Error
-	13, // 13: firefly.ClientMessage.request:type_name -> firefly.Request
-	10, // 14: firefly.ClientMessage.groupMessage:type_name -> firefly.GroupChannelMessage
-	1,  // 15: firefly.ClientMessage.authToken:type_name -> firefly.AuthenticationToken
-	15, // 16: firefly.ServerMessage.response:type_name -> firefly.Response
-	2,  // 17: firefly.ServerMessage.groupChats:type_name -> firefly.GroupChats
-	4,  // 18: firefly.ServerMessage.groupChat:type_name -> firefly.GroupChat
-	10, // 19: firefly.ServerMessage.groupMessage:type_name -> firefly.GroupChannelMessage
-	20, // [20:20] is the sub-list for method output_type
-	20, // [20:20] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	13, // 10: firefly.Request.getUserMessages:type_name -> firefly.GetUserMessages
+	15, // 11: firefly.Response.error:type_name -> firefly.Error
+	12, // 12: firefly.Response.groupMembers:type_name -> firefly.GroupMembers
+	11, // 13: firefly.Response.groupMessages:type_name -> firefly.GroupChannelMessages
+	20, // 14: firefly.Response.userMessages:type_name -> firefly.UserMessages
+	14, // 15: firefly.ClientMessage.request:type_name -> firefly.Request
+	10, // 16: firefly.ClientMessage.groupMessage:type_name -> firefly.GroupChannelMessage
+	1,  // 17: firefly.ClientMessage.authToken:type_name -> firefly.AuthenticationToken
+	19, // 18: firefly.ClientMessage.userMessage:type_name -> firefly.UserMessage
+	16, // 19: firefly.ServerMessage.response:type_name -> firefly.Response
+	2,  // 20: firefly.ServerMessage.groupChats:type_name -> firefly.GroupChats
+	4,  // 21: firefly.ServerMessage.groupChat:type_name -> firefly.GroupChat
+	10, // 22: firefly.ServerMessage.groupMessage:type_name -> firefly.GroupChannelMessage
+	19, // 23: firefly.ServerMessage.userMessage:type_name -> firefly.UserMessage
+	20, // 24: firefly.ServerMessage.userChats:type_name -> firefly.UserMessages
+	19, // 25: firefly.UserMessages.messages:type_name -> firefly.UserMessage
+	26, // [26:26] is the sub-list for method output_type
+	26, // [26:26] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_message_proto_init() }
@@ -1486,30 +1772,35 @@ func file_message_proto_init() {
 	if File_message_proto != nil {
 		return
 	}
-	file_message_proto_msgTypes[13].OneofWrappers = []any{
+	file_message_proto_msgTypes[14].OneofWrappers = []any{
 		(*Request_GetGroupMembers)(nil),
 		(*Request_GetGroupMessages)(nil),
 		(*Request_AddUser)(nil),
 		(*Request_RemoveUser)(nil),
 		(*Request_AddChannel)(nil),
 		(*Request_DeleteChannel)(nil),
-	}
-	file_message_proto_msgTypes[15].OneofWrappers = []any{
-		(*Response_Members)(nil),
-		(*Response_Messages)(nil),
-		(*Response_Error)(nil),
+		(*Request_GetUserMessages)(nil),
 	}
 	file_message_proto_msgTypes[16].OneofWrappers = []any{
+		(*Response_Error)(nil),
+		(*Response_GroupMembers)(nil),
+		(*Response_GroupMessages)(nil),
+		(*Response_UserMessages)(nil),
+	}
+	file_message_proto_msgTypes[17].OneofWrappers = []any{
 		(*ClientMessage_Request)(nil),
 		(*ClientMessage_GroupMessage)(nil),
 		(*ClientMessage_AuthToken)(nil),
 		(*ClientMessage_CurrentGroup)(nil),
+		(*ClientMessage_UserMessage)(nil),
 	}
-	file_message_proto_msgTypes[17].OneofWrappers = []any{
+	file_message_proto_msgTypes[18].OneofWrappers = []any{
 		(*ServerMessage_Response)(nil),
 		(*ServerMessage_GroupChats)(nil),
 		(*ServerMessage_GroupChat)(nil),
 		(*ServerMessage_GroupMessage)(nil),
+		(*ServerMessage_UserMessage)(nil),
+		(*ServerMessage_UserChats)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -1517,7 +1808,7 @@ func file_message_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_message_proto_rawDesc), len(file_message_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   18,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

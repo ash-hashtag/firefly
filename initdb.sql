@@ -244,3 +244,24 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER enforce_user_message_permissions
 BEFORE INSERT ON posts
 FOR EACH ROW EXECUTE FUNCTION check_user_can_message();
+
+
+CREATE TABLE userchats (
+    id UUID NOT NULL PRIMARY KEY DEFAULT generate_ulid();
+    participant1 VARCHAR NOT NULL,
+    participant2 VARCHAR NOT NULL
+);
+
+CREATE INDEX participant1_on_userchats ON userchats (participant1);
+CREATE INDEX participant2_on_userchats ON userchats (participant2);
+
+CREATE TABLE usermessages (
+    id UUID NOT NULL PRIMARY KEY DEFAULT generate_ulid();
+    chatId UUID NOT NULL REFERENCES userchats (id) ON DELETE CASCADE,
+    sender BOOLEAN NOT NULL,
+    msg VARCHAR NOT NULL
+);
+
+CREATE INDEX chatId_on_usermessages ON usermessages (chatId);
+
+

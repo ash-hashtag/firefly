@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"firefly/pkg/protos"
 	"fmt"
 	"log"
@@ -18,11 +19,11 @@ type GroupChannelIdentifier struct {
 	groupId, channelId int
 }
 
-type GroupWebSocketsState struct {
+type WebSocketsState struct {
 	authHandler      PublicKeysHandler
 	db               *pgxpool.Pool
-	groupChannelSubs PubSub[GroupChannelIdentifier]
-	activeSockets    PubSub[string]
+	groupChannelSubs PubSub[GroupChannelIdentifier] // subscribers
+	activeUsers      PubSub[string]
 }
 
 type Subscriber = chan []byte
@@ -64,9 +65,7 @@ func (self *PubSub[T]) SendTo(topic T, payload []byte) {
 	}
 
 	for subscriber := range subscribers {
-		go func(s chan []byte) {
-			s <- payload
-		}(subscriber)
+		subscriber <- payload
 	}
 }
 
@@ -79,7 +78,7 @@ func removeElementAtUnordered[T any](arr []T, index int) []T {
 	return arr[0 : length-1]
 }
 
-func (self *GroupWebSocketsState) RemoveUser(removeUser *protos.RemoveUser, verifiedToken *VerifiedToken) {
+func (self *WebSocketsState) RemoveUser(removeUser *protos.RemoveUser, verifiedToken *VerifiedToken) {
 	if verifiedToken == nil || 0 == len(verifiedToken.Username) {
 		log.Printf("ERROR: User is not authenticated")
 		return
@@ -92,7 +91,7 @@ func (self *GroupWebSocketsState) RemoveUser(removeUser *protos.RemoveUser, veri
 	RemoveUserFromChannel(self.db, username, groupId, channel, verifiedToken.Username)
 }
 
-func (self *GroupWebSocketsState) AddUser(groupId int, addUser *protos.AddUser, verifiedToken *VerifiedToken) {
+func (self *WebSocketsState) AddUser(groupId int, addUser *protos.AddUser, verifiedToken *VerifiedToken) {
 
 	if verifiedToken == nil || 0 == len(verifiedToken.Username) {
 		log.Printf("ERROR: User is not authenticated")
@@ -107,8 +106,12 @@ func (self *GroupWebSocketsState) AddUser(groupId int, addUser *protos.AddUser, 
 
 }
 
-func (self *GroupWebSocketsState) HandleRequest(msg *protos.Request, verifiedToken *VerifiedToken) *protos.Response {
+func (self *WebSocketsState) HandleRequest(msg *protos.Request, verifiedToken *VerifiedToken) *protos.Response {
 
+	requestId := msg.GetId()
+	response := &protos.Response{
+		Id: requestId,
+	}
 	switch x := msg.Message.(type) {
 
 	case *protos.Request_GetGroupMembers:
@@ -118,46 +121,93 @@ func (self *GroupWebSocketsState) HandleRequest(msg *protos.Request, verifiedTok
 			return nil
 		}
 
-		self.activeSockets.mu.RLock()
-		defer self.activeSockets.mu.RUnlock()
+		self.activeUsers.mu.RLock()
+		defer self.activeUsers.mu.RUnlock()
 		for _, user := range users {
-			_, isOnline := self.activeSockets.subscribers[user.GetUsername()]
+			_, isOnline := self.activeUsers.subscribers[user.GetUsername()]
 			user.IsOnline = isOnline
 		}
 
-		return &protos.Response{Message: &protos.Response_Members{Members: &protos.GroupMembers{Members: users}}}
+		response.Message = &protos.Response_GroupMembers{GroupMembers: &protos.GroupMembers{Members: users}}
+
+		return response
 
 	case *protos.Request_GetGroupMessages:
 
 		before := x.GetGroupMessages.GetBefore()
 		if len(before) != 16 {
-			return &protos.Response{Message: &protos.Response_Error{Error: &protos.Error{Error: "invalid fields"}}}
+
+			response.Message = &protos.Response_Error{Error: &protos.Error{Error: "Internal fields", Status: 400}}
+			return response
+
 		}
 		var count = x.GetGroupMessages.GetCount()
 		if count > 100 {
 			count = 100
 		}
 
-		messages, err := GetMessages(self.db, int(x.GetGroupMessages.GetGroupId()), int(x.GetGroupMessages.GetChannelId()), uuid.UUID([16]byte(x.GetGroupMessages.GetBefore())), uint64(count))
+		messages, err := GetGroupMessages(self.db, int(x.GetGroupMessages.GetGroupId()), int(x.GetGroupMessages.GetChannelId()), uuid.UUID([16]byte(before)), uint64(count))
 		if err != nil {
 			log.Print(err)
-			return &protos.Response{Message: &protos.Response_Error{Error: &protos.Error{Error: "Internal error"}}}
+			response.Message = &protos.Response_Error{Error: &protos.Error{Error: "Internal error", Status: 500}}
+			return response
+		}
+		response.Message =
+			&protos.Response_GroupMessages{GroupMessages: &protos.GroupChannelMessages{Messages: messages}}
+		return response
+
+	case *protos.Request_AddUser:
+		err := AddUserToChannel(self.db, x.AddUser.GetUsername(), int(x.AddUser.GetGroupId()), int(x.AddUser.GetChannelId()), int(x.AddUser.GetRole()), verifiedToken.Username)
+		if err != nil {
+			response.Message = &protos.Response_Error{Error: &protos.Error{Error: "unauthorized or group or channel doesn't exist", Status: 400}}
+			return response
+
+		}
+		return response
+	case *protos.Request_RemoveUser:
+		err := RemoveUserFromChannel(self.db, x.RemoveUser.GetUsername(), int(x.RemoveUser.GetGroupId()), int(x.RemoveUser.GetChannelId()), verifiedToken.Username)
+		if err != nil {
+			response.Message = &protos.Response_Error{Error: &protos.Error{Error: "unauthorized or group or channel doesn't exist", Status: 400}}
+			return response
+
+		}
+		return response
+	case *protos.Request_AddChannel:
+	case *protos.Request_DeleteChannel:
+	case *protos.Request_GetUserMessages:
+		before := x.GetUserMessages.GetBefore()
+		if len(before) != 16 {
+			response.Message = &protos.Response_Error{Error: &protos.Error{Error: "Invalid fields", Status: 400}}
+			return response
+		}
+		var count = x.GetUserMessages.GetCount()
+		if count > 100 {
+			count = 100
 		}
 
-		return &protos.Response{Message: &protos.Response_Messages{Messages: &protos.GroupChannelMessages{Messages: messages}}}
+		other := x.GetUserMessages.GetFrom()
 
-	case *protos.Request_AddChannel:
-	case *protos.Request_AddUser:
-	case *protos.Request_DeleteChannel:
-	case *protos.Request_RemoveUser:
+		messages, err := GetUserMessages(self.db, verifiedToken.Username, other, uuid.UUID([16]byte(before)), uint64(count))
+		if err != nil {
+			log.Print(err)
+			response.Message = &protos.Response_Error{Error: &protos.Error{Error: "Internal error", Status: 500}}
+			return response
+		}
+
+		response.Message = &protos.Response_UserMessages{UserMessages: messages}
+		return response
+
 	default:
-		panic(fmt.Sprintf("unexpected protos.isRequest_Message: %#v", x))
+		err := fmt.Sprintf("unexpected protos.isRequest_Message: %#v", x)
+		response.Message = &protos.Response_Error{Error: &protos.Error{Status: 404, Error: err}}
+		return response
+
 	}
 
-	return nil
+	return &protos.Response{Id: requestId}
 }
 
-func (self *GroupWebSocketsState) AddGroupMessage(groupMsg *protos.GroupChannelMessage, verifiedToken *VerifiedToken) error {
+func (self *WebSocketsState) AddGroupMessage(groupMsg *protos.GroupChannelMessage, verifiedToken *VerifiedToken) error {
 
 	if verifiedToken == nil || 0 == len(verifiedToken.Username) {
 		return fmt.Errorf("ERROR: User is not authenticated")
@@ -181,9 +231,7 @@ func (self *GroupWebSocketsState) AddGroupMessage(groupMsg *protos.GroupChannelM
 		subscribers, ok := self.groupChannelSubs.subscribers[GroupChannelIdentifier{groupId: groupId, channelId: channelId}]
 		if ok {
 			for sub := range subscribers {
-				go func(s chan []byte) {
-					s <- payload
-				}(sub)
+				sub <- payload
 			}
 		}
 	}
@@ -191,7 +239,23 @@ func (self *GroupWebSocketsState) AddGroupMessage(groupMsg *protos.GroupChannelM
 	return nil
 }
 
-func NewGroupWebSocketsState() GroupWebSocketsState {
+func (self *WebSocketsState) SendUserMessage(msg *protos.UserMessage) error {
+	id, err := InsertUserMessage(self.db, msg.GetFrom(), msg.GetTo(), msg.GetText())
+	if err != nil {
+		return err
+	}
+
+	msg.Id = id[:]
+	payload, err := proto.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	self.activeUsers.SendTo(msg.GetTo(), payload)
+	self.activeUsers.SendTo(msg.GetFrom(), payload)
+	return err
+}
+
+func NewGroupWebSocketsState() WebSocketsState {
 
 	audience := os.Getenv("AUDIENCE")
 
@@ -209,8 +273,8 @@ func NewGroupWebSocketsState() GroupWebSocketsState {
 		log.Fatal(err)
 	}
 
-	return GroupWebSocketsState{
-		activeSockets:    NewPubSub[string](),
+	return WebSocketsState{
+		activeUsers:      NewPubSub[string](),
 		groupChannelSubs: NewPubSub[GroupChannelIdentifier](),
 		authHandler:      NewPublicKeysHandler(audience),
 		db:               db,
@@ -218,77 +282,11 @@ func NewGroupWebSocketsState() GroupWebSocketsState {
 }
 
 func NewPubSub[T comparable]() PubSub[T] {
+
 	return PubSub[T]{
 		subscribers: map[T]map[chan []byte]bool{},
 	}
 }
-
-// WARN: Is it reliable to compare channels for equality directly ?
-
-// func (self *GroupWebSocketsState) NewSocket(username string, writer chan []byte) {
-// 	self.mu.Lock()
-// 	defer self.mu.Unlock()
-
-// 	writers, found := self.sockets[username]
-// 	if found {
-
-// 		for _, existingWriter := range writers {
-// 			if existingWriter == writer {
-// 				return
-// 			}
-// 		}
-
-// 		writers = append(writers, writer)
-// 	} else {
-// 		writers = []chan []byte{writer}
-// 		self.sockets[username] = writers
-// 	}
-// }
-
-// func (self *GroupWebSocketsState) SocketClosed(username string, writer chan []byte) {
-// 	self.mu.Lock()
-// 	defer self.mu.Unlock()
-
-// 	writers, found := self.sockets[username]
-// 	if found {
-// 		for idx, existingWriter := range writers {
-// 			if existingWriter == writer {
-// 				writers[idx] = writers[len(writers)-1]
-// 				writers = writers[:len(writers)-1]
-
-// 				if len(writers) == 0 {
-// 					delete(self.sockets, username)
-// 				}
-// 				break
-// 			}
-// 		}
-// 	}
-// }
-
-// func (self *GroupWebSocketsState) SendMessageToUsers(users []string, payload []byte) {
-// 	self.mu.RLock()
-// 	defer self.mu.RUnlock()
-// 	var wg sync.WaitGroup
-// 	for _, user := range users {
-// 		self.SendMessageToUser(user, payload, &wg)
-// 	}
-
-// 	go wg.Wait()
-// }
-
-// func (self *GroupWebSocketsState) SendMessageToUser(username string, payload []byte, wg *sync.WaitGroup) {
-// 	sockets, ok := self.sockets[username]
-// 	if ok {
-// 		for _, socket := range sockets {
-// 			wg.Add(1)
-// 			go func() {
-// 				defer wg.Done()
-// 				socket <- payload
-// 			}()
-// 		}
-// 	}
-
-// }
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:    4096,
@@ -296,7 +294,7 @@ var upgrader = websocket.Upgrader{
 	EnableCompression: true,
 }
 
-func WebsocketHandler(w http.ResponseWriter, r *http.Request, server *GroupWebSocketsState) {
+func WebsocketHandler(w http.ResponseWriter, r *http.Request, server *WebSocketsState) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -305,21 +303,21 @@ func WebsocketHandler(w http.ResponseWriter, r *http.Request, server *GroupWebSo
 	go handleWebSocket(conn, server)
 }
 
-func handleWebSocket(conn *websocket.Conn, state *GroupWebSocketsState) {
+func handleWebSocket(conn *websocket.Conn, state *WebSocketsState) {
 
-	messageSink := make(chan []byte)
+	messageSink := make(chan []byte, 20)
 	var verifiedToken *VerifiedToken
 
 	var subscribedTopics = make([]GroupChannelIdentifier, 0)
 
 	removeFromActiveSockets := func() {
-		state.activeSockets.mu.Lock()
-		defer state.activeSockets.mu.Unlock()
-		sockets, ok := state.activeSockets.subscribers[verifiedToken.Username]
+		state.activeUsers.mu.Lock()
+		defer state.activeUsers.mu.Unlock()
+		sockets, ok := state.activeUsers.subscribers[verifiedToken.Username]
 		if ok {
 			delete(sockets, messageSink)
 			if len(sockets) == 0 {
-				delete(state.activeSockets.subscribers, verifiedToken.Username)
+				delete(state.activeUsers.subscribers, verifiedToken.Username)
 			}
 		}
 
@@ -356,6 +354,7 @@ func handleWebSocket(conn *websocket.Conn, state *GroupWebSocketsState) {
 			}
 
 			subscribers[messageSink] = true
+			subscribedTopics = append(subscribedTopics, key)
 		}
 
 	}
@@ -368,130 +367,150 @@ func handleWebSocket(conn *websocket.Conn, state *GroupWebSocketsState) {
 		}
 	}()
 
-	go func() {
-		for payload := range messageSink {
-			if err := conn.WriteMessage(websocket.BinaryMessage, payload); err != nil {
-				log.Printf("ERROR: writing message, %s", err)
-				break
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	writeFunc := func() {
+		defer wg.Done()
+	forLoop:
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case payload := <-messageSink:
+				if err := conn.WriteMessage(websocket.BinaryMessage, payload); err != nil {
+					log.Printf("ERROR: writing message, %s", err)
+					break forLoop
+				}
+			default:
+				break forLoop
 			}
 		}
-	}()
+		cancel()
+	}
 
-	for {
-		msgType, msg, err := conn.ReadMessage()
-		_ = msgType
-		if err != nil {
-			log.Println(err)
-			break
-		}
-
-		{
-			message := protos.ClientMessage{}
-			err := proto.Unmarshal(msg, &message)
-			if err != nil {
-				log.Printf("received invalid message %s", err)
+	readFunc := func() {
+		readerSink := make(chan []byte)
+		go func() {
+			for {
+				msgType, msg, err := conn.ReadMessage()
+				_ = msgType
+				if err != nil {
+					log.Println(err)
+					break
+				}
+				readerSink <- msg
 			}
+		}()
+	forLoop:
+		for {
+			select {
+			case <-ctx.Done():
+				return
 
-			if verifiedToken == nil {
+			case msg := <-readerSink:
+				{
+					message := protos.ClientMessage{}
+					err := proto.Unmarshal(msg, &message)
+					if err != nil {
+						log.Printf("received invalid message %s", err)
+						continue forLoop
+					}
 
-				switch x := message.Payload.(type) {
+					if verifiedToken == nil {
 
-				case *protos.ClientMessage_AuthToken:
-					{
-						token := x.AuthToken.GetToken()
-						verifiedToken = state.authHandler.VerifyToken(token)
-						if verifiedToken != nil {
+						switch x := message.Payload.(type) {
 
-							state.activeSockets.mu.Lock()
-							defer state.activeSockets.mu.Unlock()
-							var subscribed, ok = state.activeSockets.subscribers[verifiedToken.Username]
-							if !ok {
-								subscribed = make(map[chan []byte]bool)
+						case *protos.ClientMessage_AuthToken:
+							{
+								token := x.AuthToken.GetToken()
+								verifiedToken = state.authHandler.VerifyToken(token)
+								if verifiedToken != nil {
+									state.activeUsers.Subscribe(verifiedToken.Username, messageSink)
+								}
 							}
-							subscribed[messageSink] = true
+						default:
+							continue forLoop
+						}
 
-							chats, err := GetAllGroupChatsUserIn(state.db, verifiedToken.Username)
+					}
+
+					switch x := message.Payload.(type) {
+					case *protos.ClientMessage_GroupMessage:
+						{
+							groupMsg := x.GroupMessage
+							state.AddGroupMessage(groupMsg, verifiedToken)
+						}
+					case *protos.ClientMessage_Request:
+						{
+							request := x.Request
+							response := state.HandleRequest(request, verifiedToken)
+
+							if response != nil {
+								body, err := proto.Marshal(&protos.ServerMessage{
+									Message: &protos.ServerMessage_Response{
+										Response: response,
+									},
+								})
+								if err != nil {
+									log.Println("Failed to encode Response")
+									continue forLoop
+								}
+
+								messageSink <- body
+							}
+						}
+					case *protos.ClientMessage_CurrentGroup:
+						{
+							groupId := x.CurrentGroup
+							channels, err := GetChannelsUserHasAccessTo(state.db, int(groupId), verifiedToken.Username)
+
 							if err != nil {
 								log.Print(err)
-								break
+								continue forLoop
 							}
 
-							payload, err := proto.Marshal(&protos.ServerMessage{
-								Message: &protos.ServerMessage_GroupChats{GroupChats: chats},
+							unsubscribeAllChannels()
+							subscribeToChannels(channels)
+
+							body, err := proto.Marshal(&protos.ServerMessage{
+								Message: &protos.ServerMessage_GroupChat{
+									GroupChat: &protos.GroupChat{
+										Channels: channels,
+										GroupId:  groupId,
+									},
+								},
 							})
 
 							if err != nil {
 								log.Print(err)
-								break
+								break forLoop
 							}
 
-							messageSink <- payload
+							messageSink <- body
 						}
-					}
-				default:
-					continue
-				}
-
-			}
-
-			switch x := message.Payload.(type) {
-			case *protos.ClientMessage_GroupMessage:
-				{
-					groupMsg := x.GroupMessage
-					state.AddGroupMessage(groupMsg, verifiedToken)
-				}
-			case *protos.ClientMessage_Request:
-				{
-					request := x.Request
-					response := state.HandleRequest(request, verifiedToken)
-
-					if response != nil {
-						body, err := proto.Marshal(&protos.ServerMessage{
-							Message: &protos.ServerMessage_Response{
-								Response: response,
-							},
-						})
-						if err != nil {
-							log.Println("Failed to encode Response")
-							continue
+					case *protos.ClientMessage_UserMessage:
+						{
+							userMsg := x.UserMessage
+							userMsg.From = verifiedToken.Username
+							if len(userMsg.GetTo()) == 0 || len(userMsg.GetText()) == 0 {
+								continue forLoop
+							}
+							state.SendUserMessage(userMsg)
 						}
-
-						messageSink <- body
+					default:
 					}
 				}
-			case *protos.ClientMessage_CurrentGroup:
-				{
-					groupId := x.CurrentGroup
-					channels, err := GetChannelsUserHasAccessTo(state.db, int(groupId), verifiedToken.Username)
-
-					if err != nil {
-						log.Print(err)
-						continue
-					}
-
-					unsubscribeAllChannels()
-					subscribeToChannels(channels)
-
-					body, err := proto.Marshal(&protos.ServerMessage{
-						Message: &protos.ServerMessage_GroupChat{
-							GroupChat: &protos.GroupChat{
-								Channels: channels,
-								GroupId:  groupId,
-							},
-						},
-					})
-
-					if err != nil {
-						log.Print(err)
-						break
-					}
-
-					messageSink <- body
-				}
-			default:
 			}
 		}
+		cancel()
 	}
+
+	go readFunc()
+	go writeFunc()
+	wg.Wait()
 }
 
 func StartServer(addr string) {
@@ -502,6 +521,71 @@ func StartServer(addr string) {
 	http.Handle("/", http.StripPrefix("/", fs))
 	http.HandleFunc("/egg", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Egg"))
+	})
+
+	http.HandleFunc("/groups", func(w http.ResponseWriter, r *http.Request) {
+
+		token := state.authHandler.VerifyTokenFromHeaders(r.Header)
+
+		if token == nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Invalid authorization header"))
+			return
+		}
+
+		chats, err := GetAllGroupChatsUserIn(state.db, token.Username)
+
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(""))
+			return
+		}
+
+		body, err := proto.Marshal(chats)
+
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(""))
+			return
+		}
+
+		w.Header().Set("content-type", "application/x-protobuf; proto=lupyd.chats.GroupChats")
+
+		w.Write(body)
+
+	})
+	http.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
+		token := state.authHandler.VerifyTokenFromHeaders(r.Header)
+
+		if token == nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Invalid authorization header"))
+			return
+		}
+
+		msgs, err := GetAllUserChats(state.db, token.Username)
+
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(""))
+			return
+		}
+
+		body, err := proto.Marshal(msgs)
+
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(""))
+			return
+		}
+
+		w.Header().Set("content-type", "application/x-protobuf; proto=lupyd.chats.UserMessages")
+
+		w.Write(body)
 	})
 
 	log.Println("Serving at ", addr)
