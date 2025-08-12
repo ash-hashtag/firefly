@@ -4,6 +4,7 @@ import (
 	"context"
 	"firefly/pkg/protos"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -586,6 +587,67 @@ func StartServer(addr string) {
 		w.Header().Set("content-type", "application/x-protobuf; proto=lupyd.chats.UserMessages")
 
 		w.Write(body)
+	})
+
+	http.HandleFunc("/group", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte("Only supports POST"))
+			return
+		}
+		token := state.authHandler.VerifyTokenFromHeaders(r.Header)
+		if token == nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(""))
+			return
+		}
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(""))
+			log.Println(err)
+			return
+		}
+
+		var groupChat protos.GroupChat
+
+		err = proto.Unmarshal(body, &groupChat)
+
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(""))
+			log.Println(err)
+			return
+		}
+		if len(groupChat.GetName()) < 3 {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Group name is not valid"))
+			return
+		}
+
+		grpId, err := CreateGroupChat(state.db, groupChat.GetName(), token.Username)
+
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(""))
+			log.Println(err)
+			return
+		}
+
+		groupChat.GroupId = int32(grpId)
+
+		body, err = proto.Marshal(&groupChat)
+		if err != nil {
+
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(""))
+			log.Println(err)
+			return
+		}
+
+		w.Write(body)
+
 	})
 
 	log.Println("Serving at ", addr)

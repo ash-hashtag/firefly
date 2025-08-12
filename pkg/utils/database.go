@@ -392,3 +392,13 @@ func InsertUserMessage(db *pgxpool.Pool, sender string, receiver string, msg str
 	err := row.Scan(&id)
 	return id, err
 }
+
+func CreateGroupChat(db *pgxpool.Pool, groupName string, owner string) (int, error) {
+
+	row := db.QueryRow(context.TODO(), "INSERT INTO groupchats (name, created_by) VALUES ($1, $2) RETURNING id", groupName, owner)
+	var groupId int
+
+	err := row.Scan(&groupId)
+
+	return groupId, err
+}
