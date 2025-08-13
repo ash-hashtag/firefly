@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,6 +22,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 )
+
+var EMULATORE_MODE = "true" == os.Getenv("EMULATOR_MODE")
 
 type PublicKey struct {
 	Kid string `json:"kid"`
@@ -182,7 +185,7 @@ func (self *PublicKeysHandler) VerifyTokenFromHeaders(headers http.Header) *Veri
 
 func (self *PublicKeysHandler) VerifyToken(token string) *VerifiedToken {
 
-	if "true" == os.Getenv("EMULATOR_MODE") {
+	if EMULATORE_MODE {
 
 		var m map[string]any
 		err := json.Unmarshal([]byte(token), &m)
@@ -257,14 +260,7 @@ func (self *PublicKeysHandler) VerifyToken(token string) *VerifiedToken {
 		return nil
 	}
 
-	var hasExpectedAudience = false
-
-	for _, aud := range tokenPayload.Audience {
-		if aud == self.expectedAudience {
-			hasExpectedAudience = true
-			break
-		}
-	}
+	hasExpectedAudience := slices.Contains(tokenPayload.Audience, self.expectedAudience)
 
 	if !hasExpectedAudience {
 		log.Printf("Invalid Audience")

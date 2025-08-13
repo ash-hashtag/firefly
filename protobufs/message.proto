@@ -151,7 +151,6 @@ message UserMessage {
   string from = 5;
 }
 
-
 message UserMessages {
   repeated UserMessage messages = 1;
 }

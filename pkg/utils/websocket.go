@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -516,10 +518,10 @@ func handleWebSocket(conn *websocket.Conn, state *WebSocketsState) {
 
 func StartServer(addr string) {
 	state := NewGroupWebSocketsState()
-	fs := http.FileServer(http.Dir("./public"))
+	// fs := http.FileServer(http.Dir("./public"))
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) { WebsocketHandler(w, r, &state) })
-	http.Handle("/", http.StripPrefix("/", fs))
+	// http.Handle("/", http.StripPrefix("/", fs))
 	http.HandleFunc("/egg", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Egg"))
 	})
@@ -650,6 +652,60 @@ func StartServer(addr string) {
 
 	})
 
+	http.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte("Only supports POST"))
+			return
+		}
+		token := state.authHandler.VerifyTokenFromHeaders(r.Header)
+		if token == nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(""))
+			return
+		}
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(""))
+			log.Println(err)
+			return
+		}
+
+		if !utf8.Valid(body) || isValidUsername(string(body)) {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Invalid Username"))
+			return
+		}
+
+		chatId, err := CreateUserChat(state.db, token.Username, string(body))
+
+		if !utf8.Valid(body) || isValidUsername(string(body)) {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Internal server error"))
+			return
+		}
+
+		w.Write(chatId[:])
+	})
 	log.Println("Serving at ", addr)
-	http.ListenAndServe(addr, nil)
+	err := http.ListenAndServe(addr, nil)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+func isValidUsername(s string) bool {
+	if len(s) < 3 || len(s) > 32 {
+		return false
+	}
+
+	for _, c := range s {
+		if !unicode.IsLetter(c) && !unicode.IsDigit(c) && c != '_' && c != '-' {
+			return false
+		}
+	}
+
+	return true
 }

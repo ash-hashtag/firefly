@@ -384,9 +384,19 @@ func GetAllUserChats(db *pgxpool.Pool, username string) (*protos.UserMessages, e
 }
 func InsertUserMessage(db *pgxpool.Pool, sender string, receiver string, msg string) (uuid.UUID, error) {
 
-	senderFlag := sender > receiver
+	var higher, lower string
+	var senderFlag bool
+	if sender > receiver {
+		higher = sender
+		lower = receiver
+		senderFlag = true
+	} else {
+		lower = sender
+		higher = receiver
+		senderFlag = false
+	}
 
-	row := db.QueryRow(context.TODO(), "INSERT INTO usermessages (sender, msg) VALUES ($1, $2) RETURNING id", senderFlag, msg)
+	row := db.QueryRow(context.TODO(), "INSERT INTO usermessages (sender, msg, chatId) SELECT $1, $2, c.id FROM userchats uc WHERE uc.participant1 = $3 AND uc.participant2 = $4 RETURNING id", senderFlag, msg, higher, lower)
 
 	var id uuid.UUID
 	err := row.Scan(&id)
@@ -401,4 +411,26 @@ func CreateGroupChat(db *pgxpool.Pool, groupName string, owner string) (int, err
 	err := row.Scan(&groupId)
 
 	return groupId, err
+}
+
+func CreateUserChat(db *pgxpool.Pool, participant1, participant2 string) (uuid.UUID, error) {
+
+	var higher, lower string
+
+	if participant1 > participant2 {
+		higher = participant1
+		lower = participant2
+	} else {
+		lower = participant1
+		higher = participant2
+	}
+
+	const STMT = "INSERT INTO userchats (participant1, participant2) VALUES ($1, $2) ON CONFLICT DO UPDATE SET participant1=EXCLUDED.participant1 RETURNING id"
+
+	row := db.QueryRow(context.TODO(), STMT, higher, lower)
+	var chatId uuid.UUID
+	err := row.Scan(&chatId)
+
+	return chatId, err
+
 }

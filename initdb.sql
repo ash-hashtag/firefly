@@ -249,10 +249,11 @@ FOR EACH ROW EXECUTE FUNCTION check_user_can_message();
 CREATE TABLE userchats (
     id UUID NOT NULL PRIMARY KEY DEFAULT generate_ulid();
     participant1 VARCHAR NOT NULL,
-    participant2 VARCHAR NOT NULL
+    participant2 VARCHAR NOT NULL,
+    UNIQUE (participant1, participant2)
 );
 
-CREATE INDEX participant1_on_userchats ON userchats (participant1);
+-- CREATE INDEX participant1_on_userchats ON userchats (participant1);
 CREATE INDEX participant2_on_userchats ON userchats (participant2);
 
 CREATE TABLE usermessages (
