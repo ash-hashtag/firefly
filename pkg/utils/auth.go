@@ -36,9 +36,9 @@ type PublicKeys struct {
 }
 
 type VerifiedToken struct {
-	Username    string
-	Expires     int64
-	Permissions int64
+	Username    string `json:"uname"`
+	Expires     int64  `json:"exp"`
+	Permissions int64  `json:"perms"`
 }
 
 func Base64URLDecode(input string) ([]byte, error) {
@@ -86,17 +86,6 @@ func (keys *PublicKeysHandler) JwtKeyFunc() jwt.Keyfunc {
 	return keyFunc
 }
 
-func (keys *PublicKeys) Verify(token string) (VerifiedToken, error) {
-	verified_token := VerifiedToken{}
-	segments := strings.SplitN(token, ".", 3)
-
-	if len(segments) != 3 {
-		return verified_token, fmt.Errorf("Invalid JWT Token")
-	}
-
-	return verified_token, nil
-}
-
 type PublicKeysHandler struct {
 	Keys             []RsaPublicKey
 	expiresAt        time.Time
@@ -125,7 +114,7 @@ func NewPublicKeysHandler(expectedAudience string) PublicKeysHandler {
 
 // const GOOGLE_PUBLIC_KEYS_URL = "https://www.googleapis.com/robot/v1/metadata/jwk/securetoken@system.gserviceaccount.com"
 
-const PUBLIC_KEYS_URL = "https://auth.lupyd.com/.well-known/jwks.json"
+var PUBLIC_KEYS_URL = os.Getenv("AUTH_JWKS_URL")
 
 func ParseCacheControl(cacheControl string) int {
 
@@ -187,23 +176,36 @@ func (self *PublicKeysHandler) VerifyToken(token string) *VerifiedToken {
 
 	if EMULATORE_MODE {
 
-		var m map[string]any
-		err := json.Unmarshal([]byte(token), &m)
+		var m VerifiedToken
+		decodedToken, err := Base64URLDecode(token)
+		if err != nil {
+			log.Printf("token decoding failed %s", err)
+			return nil
+		}
+		err = json.Unmarshal(decodedToken, &m)
 		if err != nil {
 			log.Print(err)
 			return nil
 		}
 
-		hasAll := m["uname"] != nil && m["perms"] != nil && m["exp"] != nil
-		if !hasAll {
+		// hasAll := m["uname"] != nil && m["perms"] != nil && m["exp"] != nil
+		// if !hasAll {
+		// 	return nil
+		// }
+
+		// log.Printf("token: %+v", m)
+
+		// return &VerifiedToken{
+		// 	Username:    m["uname"].(string),
+		// 	Permissions: int64(m["perms"].(int)),
+		// 	Expires:     int64(m["exp"].(int)),
+		// }
+
+		if m.Expires <= time.Now().Unix() {
 			return nil
 		}
 
-		return &VerifiedToken{
-			Username:    m["uname"].(string),
-			Permissions: int64(m["perms"].(int)),
-			Expires:     int64(m["exp"].(int)),
-		}
+		return &m
 	}
 
 	if self.AreExpired() {

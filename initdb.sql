@@ -97,9 +97,8 @@ CREATE TABLE IF NOT EXISTS groupmembers (
     uname VARCHAR NOT NULL,
     role INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (grpId, chanId, uname),
-    FOREIGN KEY (grpId, role) REFERENCES grouproles (grpId, role) 
     FOREIGN KEY (grpId, chanId) REFERENCES groupchannels (grpId, chanId), 
-
+    FOREIGN KEY (grpId, role) REFERENCES grouproles (grpId, role) 
 );
 
 
@@ -187,7 +186,7 @@ adderPerms INTEGER;
 addeePerms INTEGER;
 BEGIN
 
-    SELECT gr.perms, gr.role INTO adderPerms, addeeRole FROM groupmembers gm JOIN grouproles gr ON gr.grpId = gm.grpId AND gr.role = gm.role WHERE gm.grpId = groupId AND gm.chanId = channelId AND gm.uname = createdBy AND (gr.perms & 4) = 4;
+    SELECT gr.perms INTO adderPerms FROM groupmembers gm JOIN grouproles gr ON gr.grpId = gm.grpId AND gr.role = gm.role WHERE gm.grpId = groupId AND gm.chanId = channelId AND gm.uname = createdBy AND (gr.perms & 4) = 4;
 
     IF adderPerms IS NULL THEN
         RAISE NOTICE 'adder either not in channel/group or lacks permission';
@@ -242,12 +241,12 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE TRIGGER enforce_user_message_permissions
-BEFORE INSERT ON posts
+BEFORE INSERT ON groupmessages
 FOR EACH ROW EXECUTE FUNCTION check_user_can_message();
 
 
 CREATE TABLE userchats (
-    id UUID NOT NULL PRIMARY KEY DEFAULT generate_ulid();
+    id UUID NOT NULL PRIMARY KEY DEFAULT generate_ulid(),
     participant1 VARCHAR NOT NULL,
     participant2 VARCHAR NOT NULL,
     UNIQUE (participant1, participant2)
@@ -257,7 +256,7 @@ CREATE TABLE userchats (
 CREATE INDEX participant2_on_userchats ON userchats (participant2);
 
 CREATE TABLE usermessages (
-    id UUID NOT NULL PRIMARY KEY DEFAULT generate_ulid();
+    id UUID NOT NULL PRIMARY KEY DEFAULT generate_ulid(),
     chatId UUID NOT NULL REFERENCES userchats (id) ON DELETE CASCADE,
     sender BOOLEAN NOT NULL,
     msg VARCHAR NOT NULL
@@ -265,4 +264,27 @@ CREATE TABLE usermessages (
 
 CREATE INDEX chatId_on_usermessages ON usermessages (chatId);
 
+
+
+
+CREATE OR REPLACE FUNCTION get_userchats(username varchar)
+RETURNS TABLE(chatId UUID, participant1 VARCHAR, participant2 VARCHAR, msgId UUID, sender BOOLEAN, msg VARCHAR)
+AS $$
+BEGIN
+    RETURN QUERY SELECT  uc.id,
+		uc.participant1,
+		uc.participant2,
+		COALESCE(lm.id, '00000000-0000-0000-0000-000000000000'::uuid),
+        COALESCE(lm.sender, false),
+        COALESCE(lm.msg, '')
+    FROM userchats uc 
+    LEFT JOIN (
+        SELECT DISTINCT ON (um.chatId) um.*
+        FROM usermessages um
+        ORDER BY um.chatId, um.id DESC
+    ) lm
+    ON lm.chatId = uc.id
+    WHERE uc.participant1 = $1 OR uc.participant2 = $1;
+END;
+$$ LANGUAGE plpgsql;
 

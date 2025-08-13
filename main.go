@@ -2,15 +2,12 @@ package main
 
 import (
 	. "firefly/pkg/utils"
+	"log"
 	"os"
-
-	"github.com/joho/godotenv"
 )
 
 func main() {
-
-	godotenv.Load()
-
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	var port = os.Getenv("PORT")
 	if len(port) == 0 {
 		port = "37373"

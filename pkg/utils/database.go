@@ -103,7 +103,7 @@ func GetUserMessages(db *pgxpool.Pool, participant1 string, participant2 string,
 		lower = participant1
 	}
 
-	const STMT = "SELECT um.id, um.sender, um.msg FROM userchats uc WHERE uc.participant1 = $1 AND uc.participant2 = $2 JOIN usermessages um ON um.chatId = uc.id WHERE um.id < $3 LIMIT $4"
+	const STMT = "SELECT um.id, um.sender, um.msg FROM userchats uc JOIN usermessages um ON um.chatId = uc.id WHERE uc.participant1 = $1 AND uc.participant2 = $2 AND um.id < $3 LIMIT $4"
 
 	rows, err := db.Query(context.TODO(), STMT, higher, lower, before, count)
 	if err != nil {
@@ -353,7 +353,27 @@ func GetAllGroupChatsUserIn(db *pgxpool.Pool, username string) (*protos.GroupCha
 }
 
 func GetAllUserChats(db *pgxpool.Pool, username string) (*protos.UserMessages, error) {
-	rows, err := db.Query(context.TODO(), "SELECT id, participant1, participant2 FROM userchats WHERE participant1 = $1 OR participant2 = $1", username)
+
+	// 	const STMT = `
+	// SELECT  uc.id,
+	// 		uc.participant1,
+	// 		uc.participant2,
+	// 		lm.id,
+	//         COALESCE(lm.sender, false),
+	//         COALESCE(lm.msg, '')
+	// FROM userchats uc
+	// LEFT JOIN (
+	//     SELECT DISTINCT ON (um.chatId) um.*
+	//     FROM usermessages um
+	//     ORDER BY um.chatId, um.id DESC
+	// ) lm
+	// ON lm.chatId = uc.id
+	// WHERE uc.participant1 = $1 OR uc.participant2 = $1
+	// 		`
+
+	const STMT = "SELECT * FROM get_userchats($1)"
+
+	rows, err := db.Query(context.TODO(), STMT, username)
 	var messages = &protos.UserMessages{
 		Messages: make([]*protos.UserMessage, 0, 16),
 	}
@@ -364,20 +384,31 @@ func GetAllUserChats(db *pgxpool.Pool, username string) (*protos.UserMessages, e
 	defer rows.Close()
 
 	for rows.Next() {
-		var id uuid.UUID
-		var other string
-		var msg string
+		var chatId, msgId uuid.UUID
+		var senderFlag bool
+		var participant1, participant2, msg string
 
-		err := rows.Scan(&id, &msg, &other)
+		err := rows.Scan(&chatId, &participant1, &participant2, &msgId, &senderFlag, &msg)
 		if err != nil {
 			return messages, err
 		}
 
+		var from string
+		var to string
+
+		if senderFlag {
+			from = participant1
+			to = participant2
+		} else {
+			from = participant2
+			to = participant1
+		}
+
 		messages.Messages = append(messages.Messages, &protos.UserMessage{
-			Id:   id[:],
-			From: other,
+			Id:   msgId[:],
+			From: from,
 			Text: msg,
-			To:   username,
+			To:   to,
 		})
 	}
 	return messages, nil
@@ -396,7 +427,9 @@ func InsertUserMessage(db *pgxpool.Pool, sender string, receiver string, msg str
 		senderFlag = false
 	}
 
-	row := db.QueryRow(context.TODO(), "INSERT INTO usermessages (sender, msg, chatId) SELECT $1, $2, c.id FROM userchats uc WHERE uc.participant1 = $3 AND uc.participant2 = $4 RETURNING id", senderFlag, msg, higher, lower)
+	const STMT = "INSERT INTO usermessages (sender, msg, chatId) SELECT $1, $2, uc.id FROM userchats uc WHERE uc.participant1 = $3 AND uc.participant2 = $4 RETURNING id"
+
+	row := db.QueryRow(context.TODO(), STMT, senderFlag, msg, higher, lower)
 
 	var id uuid.UUID
 	err := row.Scan(&id)
@@ -425,7 +458,7 @@ func CreateUserChat(db *pgxpool.Pool, participant1, participant2 string) (uuid.U
 		higher = participant2
 	}
 
-	const STMT = "INSERT INTO userchats (participant1, participant2) VALUES ($1, $2) ON CONFLICT DO UPDATE SET participant1=EXCLUDED.participant1 RETURNING id"
+	const STMT = "INSERT INTO userchats (participant1, participant2) VALUES ($1, $2) ON CONFLICT (participant1, participant2) DO UPDATE SET participant1=EXCLUDED.participant1 RETURNING id"
 
 	row := db.QueryRow(context.TODO(), STMT, higher, lower)
 	var chatId uuid.UUID

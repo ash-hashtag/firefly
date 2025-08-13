@@ -223,6 +223,7 @@ func (self *WebSocketsState) AddGroupMessage(groupMsg *protos.GroupChannelMessag
 		return err
 	}
 	finalMsg := groupMsg
+
 	payload, err := proto.Marshal(&protos.ServerMessage{Message: &protos.ServerMessage_GroupMessage{GroupMessage: finalMsg}})
 	if err != nil {
 		log.Printf("ERROR: Encoding protobuf %s", err)
@@ -249,10 +250,11 @@ func (self *WebSocketsState) SendUserMessage(msg *protos.UserMessage) error {
 	}
 
 	msg.Id = id[:]
-	payload, err := proto.Marshal(msg)
+	payload, err := proto.Marshal(&protos.ServerMessage{Message: &protos.ServerMessage_UserMessage{UserMessage: msg}})
 	if err != nil {
 		return err
 	}
+
 	self.activeUsers.SendTo(msg.GetTo(), payload)
 	self.activeUsers.SendTo(msg.GetFrom(), payload)
 	return err
@@ -295,21 +297,24 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:    4096,
 	WriteBufferSize:   4096,
 	EnableCompression: true,
+	CheckOrigin:       func(r *http.Request) bool { return true },
 }
 
 func WebsocketHandler(w http.ResponseWriter, r *http.Request, server *WebSocketsState) {
+	log.Println("New Websocket Request ", r.RemoteAddr)
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	go handleWebSocket(conn, server)
+	log.Println("websocket connection established ", r.RemoteAddr)
+	handleWebSocket(conn, server)
 }
 
 func handleWebSocket(conn *websocket.Conn, state *WebSocketsState) {
 
 	messageSink := make(chan []byte, 20)
-	var verifiedToken *VerifiedToken
+	var verifiedToken *VerifiedToken = nil
 
 	var subscribedTopics = make([]GroupChannelIdentifier, 0)
 
@@ -364,6 +369,7 @@ func handleWebSocket(conn *websocket.Conn, state *WebSocketsState) {
 
 	defer func() {
 		conn.Close()
+		log.Println("websocket connection closed ", conn.RemoteAddr().String())
 		if verifiedToken != nil {
 			unsubscribeAllChannels()
 			removeFromActiveSockets()
@@ -382,19 +388,21 @@ func handleWebSocket(conn *websocket.Conn, state *WebSocketsState) {
 			select {
 			case <-ctx.Done():
 				return
-			case payload := <-messageSink:
+			case payload, ok := <-messageSink:
+				if !ok {
+					break forLoop
+				}
 				if err := conn.WriteMessage(websocket.BinaryMessage, payload); err != nil {
 					log.Printf("ERROR: writing message, %s", err)
 					break forLoop
 				}
-			default:
-				break forLoop
 			}
 		}
 		cancel()
 	}
 
 	readFunc := func() {
+		defer wg.Done()
 		readerSink := make(chan []byte)
 		go func() {
 			for {
@@ -402,6 +410,7 @@ func handleWebSocket(conn *websocket.Conn, state *WebSocketsState) {
 				_ = msgType
 				if err != nil {
 					log.Println(err)
+					close(readerSink)
 					break
 				}
 				readerSink <- msg
@@ -413,8 +422,12 @@ func handleWebSocket(conn *websocket.Conn, state *WebSocketsState) {
 			case <-ctx.Done():
 				return
 
-			case msg := <-readerSink:
+			case msg, ok := <-readerSink:
 				{
+					if !ok {
+						break forLoop
+					}
+
 					message := protos.ClientMessage{}
 					err := proto.Unmarshal(msg, &message)
 					if err != nil {
@@ -432,6 +445,7 @@ func handleWebSocket(conn *websocket.Conn, state *WebSocketsState) {
 								verifiedToken = state.authHandler.VerifyToken(token)
 								if verifiedToken != nil {
 									state.activeUsers.Subscribe(verifiedToken.Username, messageSink)
+									log.Println("websocket authenticated ", verifiedToken.Username)
 								}
 							}
 						default:
@@ -501,7 +515,12 @@ func handleWebSocket(conn *websocket.Conn, state *WebSocketsState) {
 							if len(userMsg.GetTo()) == 0 || len(userMsg.GetText()) == 0 {
 								continue forLoop
 							}
-							state.SendUserMessage(userMsg)
+
+							log.Printf("Sending user message %+v", userMsg)
+							err := state.SendUserMessage(userMsg)
+							if err != nil {
+								log.Println(err)
+							}
 						}
 					default:
 					}
@@ -673,15 +692,18 @@ func StartServer(addr string) {
 			return
 		}
 
-		if !utf8.Valid(body) || isValidUsername(string(body)) {
+		other := string(body)
+
+		if !utf8.Valid(body) || !isValidUsername(other) {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Invalid Username"))
+			fmt.Fprintf(w, "Invalid Username '%s'", other)
 			return
 		}
 
-		chatId, err := CreateUserChat(state.db, token.Username, string(body))
+		chatId, err := CreateUserChat(state.db, token.Username, other)
 
-		if !utf8.Valid(body) || isValidUsername(string(body)) {
+		if err != nil {
+			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Internal server error"))
 			return
